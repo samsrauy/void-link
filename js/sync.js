@@ -25,25 +25,32 @@ const charId = syncParams.get('id') || 'global_user';
  * Sends data to the Google Sheet (POST)
  */
 async function saveStat(id, statName, value) {
-    if (!GAS_URL) {
-        console.warn("No API URL detected. Stats will not be saved to Google Sheets.");
-        return;
+    if (!GAS_URL) return;
+
+    // Special logic for History: We fetch current history, add new item, and save back
+    if (statName === "history_entry") {
+        const currentData = await loadStats(id);
+        let history = [];
+        try { history = JSON.parse(currentData.history || "[]"); } catch(e) {}
+        
+        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        history.push({ time: timestamp, text: value });
+        
+        // Keep only the last 20 rolls
+        if (history.length > 20) history.shift();
+        
+        statName = "history";
+        value = JSON.stringify(history);
     }
 
     try {
         await fetch(GAS_URL, {
             method: "POST",
-            mode: "no-cors", 
+            mode: "no-cors",
             cache: "no-cache",
-            body: JSON.stringify({
-                id: id,
-                stat: statName,
-                value: value
-            })
+            body: JSON.stringify({ id: id, stat: statName, value: value })
         });
-    } catch (error) {
-        console.error("Sync failed:", error);
-    }
+    } catch (e) { console.error("Sync error:", e); }
 }
 
 /**
