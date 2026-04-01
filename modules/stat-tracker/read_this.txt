@@ -1,0 +1,1 @@
+modules/stat-tracker/index.html is just a template. You don't use this except for when someone creates a new thing.
