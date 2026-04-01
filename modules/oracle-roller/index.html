@@ -1,0 +1,9 @@
+// Get settings from the URL (e.g., ?game=starforged&table=core)
+const urlParams = new URLSearchParams(window.location.search);
+const game = urlParams.get('game') || 'starforged'; 
+const tablePath = urlParams.get('table') || 'oracles/core.json';
+
+async function init() {
+    const data = await fetchDatasworn(game, tablePath);
+    // Populate UI based on the game and data
+}
