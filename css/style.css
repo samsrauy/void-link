@@ -1,43 +1,53 @@
-:root {
-    /* Starforged Theme Colors */
-    --sf-bg: #0b0d10;
-    --sf-border: #454d5d;
-    --sf-accent: #cd5a29; /* Orange */
-    --sf-text: #e2e4e9;
-    --sf-font: 'Exo 2', 'Segoe UI', sans-serif;
-}
-
+/* Shared Layout Styles */
 body {
-    background-color: var(--sf-bg);
-    color: var(--sf-text);
-    font-family: var(--sf-font);
     margin: 0;
-    padding: 10px;
-    overflow: hidden; /* Important for clean iframes */
+    padding: 15px;
+    font-family: 'Exo 2', 'Segoe UI', sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    transition: background-color 0.3s, color 0.3s;
 }
 
-.module-container {
-    border: 1px solid var(--sf-border);
-    padding: 1rem;
-    border-radius: 4px;
+/* --- STARFORGED THEME --- */
+.theme-starforged {
+    --bg: #0b0d12;
+    --border: #454d5d;
+    --accent: #cd5a29; /* Orange */
+    --text: #e2e4e9;
 }
 
+/* --- IRONSWORN THEME --- */
+.theme-ironsworn {
+    --bg: #1a1a1a;
+    --border: #666;
+    --accent: #999; /* Iron/Stone Gray */
+    --text: #f0f0f0;
+}
+
+/* Elements using the variables */
 button {
     background: transparent;
-    color: var(--sf-accent);
-    border: 1px solid var(--sf-accent);
-    padding: 5px 15px;
-    cursor: pointer;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 8px 16px;
     text-transform: uppercase;
     font-weight: bold;
-    transition: 0.2s;
+    cursor: pointer;
 }
 
 button:hover {
-    background: var(--sf-accent);
-    color: white;
+    background: var(--accent);
+    color: #fff;
 }
 
-/* Scrollbar styling for a sleek look */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-thumb { background: var(--sf-border); }
+select {
+    background: #222;
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 5px;
+}
+
+.result-text {
+    border-left: 3px solid var(--accent);
+    padding-left: 10px;
+}
