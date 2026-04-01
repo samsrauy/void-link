@@ -56,38 +56,47 @@
         const params = new URLSearchParams(window.location.search);
         const game = params.get('game') || 'starforged';
 
+        /**
+         * INITIALIZATION
+         */
         async function init() {
-            // 1. Set the Theme
+            // 1. Theme
             document.body.classList.add(`theme-${game}`);
-    
-            // 2. Load the initial Narrative Journal text
+            
+            // 2. Initial Narrative Load
+            // We do a manual fetch once here just for the text area
             const saved = await loadStats(charId);
-            if (saved.journal) document.getElementById('journal-input').value = saved.journal;
-
-            // 3. Start the Heartbeat for the Action Log
-            // This will run refreshLog() immediately, then every 35s with jitter.
-            startHeartbeat(refreshLog, 35000); 
+            if (saved.journal) {
+                document.getElementById('journal-input').value = saved.journal;
             }
+            
+            // 3. Start Sync Heartbeat for the Log
+            // startHeartbeat (from sync.js) will call refreshLog immediately, 
+            // then every 35 seconds with random jitter.
+            startHeartbeat(refreshLog, 35000);
+        }
 
-      async function init() {
-            document.body.classList.add(`theme-${game}`);
-    
-            // Start the heartbeat pointing to refreshLog
-            startHeartbeat(refreshLog, 35000); 
-
-            // Note: No loader to hide here usually, but good for consistency
-           }
-
+        /**
+         * SAVE JOURNAL TEXT
+         * Triggered when the user clicks out of the textarea
+         */
         async function saveJournal() {
             const text = document.getElementById('journal-input').value;
             await saveStat(charId, "journal", text);
         }
 
+        /**
+         * REFRESH LOG
+         * This is our "Heartbeat" function
+         */
         async function refreshLog() {
             const saved = await loadStats(charId);
             renderLog(saved.history);
         }
 
+        /**
+         * UI RENDERING
+         */
         function renderLog(historyStr) {
             const container = document.getElementById('log-list');
             container.innerHTML = '';
@@ -98,13 +107,13 @@
             }
 
             try {
-                // history is stored as a JSON string array in the sheet
                 const history = JSON.parse(historyStr);
+                // Show newest rolls at the top
                 history.reverse().forEach(entry => {
                     const div = document.createElement('div');
                     div.className = 'log-entry';
                     
-                    // Style the results (Strong Hit, etc)
+                    // Apply hit styling
                     let styledText = entry.text
                         .replace(/Strong Hit/g, '<span class="strong-hit">Strong Hit</span>')
                         .replace(/Weak Hit/g, '<span class="weak-hit">Weak Hit</span>')
@@ -118,6 +127,7 @@
             }
         }
 
+        // Execute
         init();
     </script>
 </body>
