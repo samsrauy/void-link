@@ -7,7 +7,7 @@
  * https://samsrauy.github.io/ironsworn-starforged-googlesites-modules/modules/stat-tracker/index.html
  * * 2. Add the Game (Theme/Rules):        ?game=starforged  (or ?game=ironsworn)
  * * 3. Add your unique Character ID:      &id=Valerius
- * * 4. Add your private Google API Key:   &api=https://script.google.com/macros/s/[YOUR_UNIQUE_ID]/exec
+ * * 4. Add your private Google API Key:   &api=https://script.google.com/macros/s/[YOUR_UNIQUE_ID]/exec (the URL that follows &api= is the URL you created when you Deployed the Google App Script.)
  *
  * FULL EXAMPLE:
  * https://samsrauy.github.io/ironsworn-starforged-googlesites-modules/modules/stat-tracker/index.html?game=starforged&id=Valerius&api=https://script.google.com/macros/s/AKfycb.../exec
