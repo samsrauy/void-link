@@ -1,29 +1,64 @@
-// Replace this with your deployed Google Apps Script URL later
-const GAS_URL = "https://script.google.com/macros/s/.../exec";
+/**
+ * ==============================================================================
+ * SYNC.JS - Multiplayer Bridge
+ * * This script allows your Google Sites modules to talk to your Google Sheet.
+ * * HOW TO USE:
+ * When you embed a module in Google Sites, you must include your Google Apps 
+ * Script Web App URL in the 'api' parameter of the link.
+ * * EXAMPLE EMBED URL:
+ * https://your-username.github.io/modules/oracle-roller/index.html?game=starforged&id=MyHero&api=https://script.google.com/macros/s/YOUR_API_ID/exec
+ * * PARAMETERS:
+ * - game: 'starforged' or 'ironsworn' (sets theme and data)
+ * - id:   Your Character Name (identifies your row in the Google Sheet)
+ * - api:  Your Google Apps Script Web App URL (identifies your Google Sheet)
+ * ==============================================================================
+ */
+
+// Grab the API URL and Character ID from the browser's address bar
+const syncParams = new URLSearchParams(window.location.search);
+const GAS_URL = syncParams.get('api');
+const charId = syncParams.get('id') || 'global_user';
 
 /**
- * Sends a stat update to Google Sheets
+ * Sends data to the Google Sheet (POST)
  */
-async function saveStat(charId, statName, value) {
-    const payload = {
-        action: "UPDATE",
-        id: charId,
-        stat: statName,
-        value: value
-    };
+async function saveStat(id, statName, value) {
+    if (!GAS_URL) {
+        console.warn("No API URL detected. Stats will not be saved to Google Sheets.");
+        return;
+    }
 
-    // Note: Google Apps Script requires 'no-cors' for simple POST redirects
-    await fetch(GAS_URL, {
-        method: "POST",
-        mode: "no-cors",
-        body: JSON.stringify(payload)
-    });
+    try {
+        await fetch(GAS_URL, {
+            method: "POST",
+            mode: "no-cors", // Required for Google Apps Script redirects
+            cache: "no-cache",
+            body: JSON.stringify({
+                id: id,
+                stat: statName,
+                value: value
+            })
+        });
+    } catch (error) {
+        console.error("Sync failed:", error);
+    }
 }
 
 /**
- * Gets all stats for a specific character
+ * Retrieves data from the Google Sheet (GET)
  */
-async function loadStats(charId) {
-    const response = await fetch(`${GAS_URL}?id=${charId}`);
-    return await response.json();
+async function loadStats(id) {
+    if (!GAS_URL) {
+        console.warn("No API URL detected. Loading local defaults only.");
+        return {};
+    }
+
+    try {
+        const response = await fetch(`${GAS_URL}?id=${id}`);
+        if (!response.ok) throw new Error("Network response was not ok");
+        return await response.json();
+    } catch (error) {
+        console.error("Fetch failed:", error);
+        return {};
+    }
 }
