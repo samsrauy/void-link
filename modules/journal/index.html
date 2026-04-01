@@ -58,16 +58,12 @@
 
         async function init() {
             document.body.classList.add(`theme-${game}`);
-            
-            // Load existing data
-            const saved = await loadStats(charId);
-            if (saved.journal) document.getElementById('journal-input').value = saved.journal;
-            
-            renderLog(saved.history);
-            
-            // Auto-refresh log every 30 seconds for multiplayer feel
-            setInterval(refreshLog, 30000);
-        }
+    
+            // Start the heartbeat pointing to refreshLog
+            startHeartbeat(refreshLog, 35000); 
+
+            // Note: No loader to hide here usually, but good for consistency
+           }
 
         async function saveJournal() {
             const text = document.getElementById('journal-input').value;
