@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../../css/style.css">
+    <style>
+        .asset-card { 
+            max-width: 400px; 
+            margin: 0 auto;
+            border: 1px solid var(--border); 
+            background: rgba(255,255,255,0.02); 
+            border-radius: 8px; 
+            padding: 18px; 
+        }
+        .asset-type { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 2px; opacity: 0.6; margin-bottom: 4px; }
+        .asset-name { font-size: 1.5rem; color: var(--accent); font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        
+        .ability-row { 
+            display: flex; 
+            align-items: flex-start; 
+            margin-bottom: 12px; 
+            padding: 8px; 
+            border-radius: 4px; 
+            cursor: pointer;
+            transition: 0.2s; 
+        }
+        .ability-row:hover { background: rgba(255,255,255,0.05); }
+        
+        .checkbox { 
+            width: 20px; height: 20px; border: 2px solid var(--accent); 
+            margin-right: 12px; margin-top: 2px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 2px;
+        }
+        .checkbox.checked::after { 
+            content: "✔"; 
+            color: var(--accent); 
+            font-size: 16px; 
+            font-weight: bold;
+        }
+        
+        .ability-text { font-size: 0.9rem; line-height: 1.4; opacity: 0.9; }
+        
+        /* The Built-in Tracker (Health/Integrity) */
+        .tracker-area { 
+            margin-top: 15px; 
+            padding-top: 15px; 
+            border-top: 1px solid var(--border); 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+        }
+        .tracker-controls button { padding: 4px 12px; font-size: 1rem; }
+    </style>
+</head>
+<body>
+
+    <div id="loader">Syncing Asset Data...</div>
+
+    <div id="asset-ui" style="display:none;" class="asset-card">
+        <div id="a-type" class="asset-type">Asset</div>
+        <div id="a-name" class="asset-name">...</div>
+        
+        <div id="abilities"></div>
+
+        <div id="tracker-container" class="tracker-area" style="display:none;">
+            <span id="tracker-label" style="font-weight: bold; text-transform: uppercase; font-size: 0.8rem;">Tracker</span>
+            <div class="tracker-controls">
+                <button onclick="adjustTracker(-1)">-</button>
+                <span id="tracker-val" style="margin: 0 15px; font-family: monospace; font-size: 1.2rem;">0</span>
+                <button onclick="adjustTracker(1)">+</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../js/datasworn.js"></script>
+    <script src="../../js/sync.js"></script>
+    <script>
+        const assetParams = new URLSearchParams(window.location.search);
+        const assetSlug = assetParams.get('asset'); 
+        const game = assetParams.get('game') || 'starforged';
+        
+        let assetDetails = null;
+        let localState = { 
+            abilities: [true, false, false], // Starforged: 1st is usually free
+            tracker: 0 
+        };
+
+        async function init() {
+            // 1. Theme & URL Check
+            document.body.classList.add(`theme-${game}`);
+            if (!assetSlug) { 
+                document.getElementById('loader').innerText = "Missing ?asset=[slug] parameter."; 
+                return; 
+            }
+
+            // 2. Fetch Rulebook Data
+            const allAssets = await fetchDatasworn(game, 'assets.json');
+            
+            // Search all categories for the slug
+            for (let category in allAssets.assets) {
+                const found = allAssets.assets[category].assets[assetSlug];
+                if (found) {
+                    assetDetails = found;
+                    break;
+                }
+            }
+
+            if (assetDetails) {
+                // 3. Sync with Google Sheet
+                const saved = await loadStats(charId);
+                
+                // Parse abilities (they are stored as JSON strings in the sheet)
+                const savedAbilities = saved[`${assetSlug}_abilities`];
+                if (savedAbilities) localState.abilities = JSON.parse(savedAbilities);
+                
+                localState.tracker = parseInt(saved[`${assetSlug}_tracker`]) || 0;
+
+                renderAsset();
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('asset-ui').style.display = 'block';
+            } else {
+                document.getElementById('loader').innerText = `Asset "${assetSlug}" not found in ${game}.`;
+            }
+        }
+
+        function renderAsset() {
+            document.getElementById('a-name').innerText = assetDetails.name;
+            document.getElementById('a-type').innerText = assetDetails.asset_type.replace(/_/g, ' ');
+            
+            const abContainer = document.getElementById('abilities');
+            abContainer.innerHTML = '';
+
+            assetDetails.abilities.forEach((ab, index) => {
+                const isChecked = localState.abilities[index];
+                const row = document.createElement('div');
+                row.className = 'ability-row';
+                row.onclick = () => toggleAbility(index);
+                row.innerHTML = `
+                    <div class="checkbox ${isChecked ? 'checked' : ''}"></div>
+                    <div class="ability-text">${ab.text}</div>
+                `;
+                abContainer.appendChild(row);
+            });
+
+            // Handle Asset Trackers (Health, Integrity, etc)
+            if (assetDetails.control) {
+                document.getElementById('tracker-container').style.display = 'flex';
+                document.getElementById('tracker-label').innerText = assetDetails.control.name;
+                document.getElementById('tracker-val').innerText = localState.tracker;
+            }
+        }
+
+        async function toggleAbility(index) {
+            localState.abilities[index] = !localState.abilities[index];
+            renderAsset();
+            // Store the array as a string so Google Sheets handles it easily
+            await saveStat(charId, `${assetSlug}_abilities`, JSON.stringify(localState.abilities));
+        }
+
+        async function adjustTracker(amt) {
+            localState.tracker += amt;
+            // Bound checks based on Datasworn (defaulting to 0-6 if not specified)
+            const max = assetDetails.control?.max || 6;
+            if (localState.tracker < 0) localState.tracker = 0;
+            if (localState.tracker > max) localState.tracker = max;
+
+            document.getElementById('tracker-val').innerText = localState.tracker;
+            await saveStat(charId, `${assetSlug}_tracker`, localState.tracker);
+        }
+
+        init();
+    </script>
+</body>
+</html>
