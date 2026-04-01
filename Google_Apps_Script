@@ -4,6 +4,7 @@
  * SETTING UP YOUR GOOGLE SHEET:
  * 1. Create a new Google Sheet.
  * 2. Rename the first tab (sheet) to "Stats".
+ * (The Sheet Tab Name is also case sensitive. It MUST be Stats for the script to work.)
  * 3. Add these headers in Row 1: [A1] characterId, [B1] health, [C1] momentum, [D1] spirit, [E1] supply, [F1] last_roll.
  * (The script will automatically add more columns as you create more stats! But please note the lables are case sensitive!)
  * * Install the Script
