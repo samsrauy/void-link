@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../../css/style.css">
+    <style>
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); 
+            gap: 12px; 
+            padding: 10px;
+        }
+        .stat-box {
+            border: 1px solid var(--border);
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            padding: 12px 5px;
+            text-align: center;
+            position: relative;
+        }
+        .stat-name { font-size: 0.65rem; text-transform: uppercase; opacity: 0.6; letter-spacing: 1px; margin-bottom: 4px; }
+        .stat-value { font-size: 1.8rem; font-weight: bold; color: var(--accent); margin-bottom: 8px; font-family: 'Courier New', monospace; }
+        
+        .btn-group { display: flex; justify-content: center; gap: 8px; }
+        .btn-group button { 
+            width: 30px; height: 30px; border-radius: 4px; 
+            background: rgba(255,255,255,0.1); border: 1px solid var(--border);
+            color: white; cursor: pointer; font-size: 1.1rem;
+        }
+        .btn-group button:hover { background: var(--accent); color: black; }
+
+        .controls { 
+            margin-top: 15px; padding: 10px; border-top: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .sync-status { font-size: 0.6rem; opacity: 0.4; text-transform: uppercase; }
+        
+        #refresh-btn { 
+            background: none; border: 1px solid var(--border); color: var(--text);
+            font-size: 0.65rem; padding: 4px 10px; cursor: pointer; border-radius: 4px;
+        }
+        #refresh-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        
+        .warning-text { color: #f87171; font-size: 0.6rem; display: none; margin-top: 5px; }
+    </style>
+</head>
+<body>
+
+    <div id="loader">Initializing Vitals...</div>
+
+    <div id="sheet-ui" style="display:none;">
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-name">Health</div>
+                <div id="health-val" class="stat-value">5</div>
+                <div class="btn-group">
+                    <button onclick="changeStat('health', -1)">-</button>
+                    <button onclick="changeStat('health', 1)">+</button>
+                </div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-name">Spirit</div>
+                <div id="spirit-val" class="stat-value">5</div>
+                <div class="btn-group">
+                    <button onclick="changeStat('spirit', -1)">-</button>
+                    <button onclick="changeStat('spirit', 1)">+</button>
+                </div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-name">Supply</div>
+                <div id="supply-val" class="stat-value">5</div>
+                <div class="btn-group">
+                    <button onclick="changeStat('supply', -1)">-</button>
+                    <button onclick="changeStat('supply', 1)">+</button>
+                </div>
+            </div>
+            <div class="stat-box" style="border-color: var(--accent);">
+                <div class="stat-name">Momentum</div>
+                <div id="momentum-val" class="stat-value">2</div>
+                <div class="btn-group">
+                    <button onclick="changeStat('momentum', -1)">-</button>
+                    <button onclick="changeStat('momentum', 1)">+</button>
+                </div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-name">Experience</div>
+                <div id="xp-val" class="stat-value">0</div>
+                <div class="btn-group">
+                    <button onclick="changeStat('xp', -1)">-</button>
+                    <button onclick="changeStat('xp', 1)">+</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <span id="sync-note" class="sync-status">Auto-sync active</span>
+            <div>
+                <button id="refresh-btn" onclick="manualRefresh()">Refresh</button>
+                <div id="spam-warning" class="warning-text">Cooldown...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../../js/sync.js"></script>
+    <script>
+        const game = new URLSearchParams(window.location.search).get('game') || 'starforged';
+        let currentStats = { health: 5, spirit: 5, supply: 5, momentum: 2, xp: 0 };
+
+        async function init() {
+            document.body.classList.add(`theme-${game}`);
+            
+            // Hand the refresh logic to the sync engine
+            startHeartbeat(refreshData, 35000);
+
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('sheet-ui').style.display = 'block';
+        }
+
+        async function refreshData() {
+            const saved = await loadStats(charId);
+            if (Object.keys(saved).length > 0) {
+                for (let key in currentStats) {
+                    if (saved[key] !== undefined) {
+                        currentStats[key] = parseInt(saved[key]);
+                        document.getElementById(`${key}-val`).innerText = currentStats[key];
+                    }
+                }
+                document.getElementById('sync-note').innerText = "Last sync: " + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+            }
+        }
+
+        async function manualRefresh() {
+            const btn = document.getElementById('refresh-btn');
+            const warn = document.getElementById('spam-warning');
+            btn.disabled = true;
+            warn.style.display = "block";
+            
+            await refreshData();
+            
+            setTimeout(() => {
+                btn.disabled = false;
+                warn.style.display = "none";
+            }, 5000);
+        }
+
+        async function changeStat(stat, amt) {
+            currentStats[stat] += amt;
+            
+            // Standard Ironsworn/Starforged Caps
+            if (stat === 'momentum') {
+                if (currentStats[stat] > 10) currentStats[stat] = 10;
+                if (currentStats[stat] < -6) currentStats[stat] = -6;
+            } else if (stat === 'xp') {
+                if (currentStats[stat] < 0) currentStats[stat] = 0;
+            } else {
+                if (currentStats[stat] > 5) currentStats[stat] = 5;
+                if (currentStats[stat] < 0) currentStats[stat] = 0;
+            }
+
+            document.getElementById(`${stat}-val`).innerText = currentStats[stat];
+            
+            // Sync to Sheet
+            await saveStat(charId, stat, currentStats[stat]);
+            
+            // Add to Log
+            const sign = amt > 0 ? "+" : "";
+            await saveStat(charId, "history_entry", `${stat.toUpperCase()} modified: ${sign}${amt} (Total: ${currentStats[stat]})`);
+        }
+
+        init();
+    </script>
+</body>
+</html>
