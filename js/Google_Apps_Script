@@ -1,0 +1,96 @@
+/**
+ * ==============================================================================
+ * PROJECT: Ironsworn/Starforged Google Sites Sync
+ * SETTING UP YOUR GOOGLE SHEET:
+ * 1. Create a new Google Sheet.
+ * 2. Rename the first tab (sheet) to "Stats".
+ * 3. Add these headers in Row 1: [A1] characterId, [B1] health, [C1] momentum.
+ * (The script will automatically add more columns as you create more stats!)
+ * * DEPLOYMENT INSTRUCTIONS:
+ * 1. Click 'Deploy' > 'New Deployment'.
+ * 2. Select 'Web App'.
+ * 3. Execute as: 'Me' (Your email).
+ * 4. Who has access: 'Anyone'.
+ * 5. Copy the 'Web App URL' and paste it into your GitHub 'js/sync.js' file.
+ * ==============================================================================
+ */
+
+/**
+ * GET Request: Retrieves character data.
+ * Triggered by: fetch(`${GAS_URL}?id=YourCharID`)
+ */
+function doGet(e) {
+  try {
+    const charId = e.parameter.id;
+    if (!charId) throw new Error("No character ID provided.");
+
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName("Stats");
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    // Find the row where the first column matches the characterId
+    const row = data.find(r => r[0] === charId);
+    
+    let result = {};
+    if (row) {
+      headers.forEach((header, index) => {
+        result[header] = row[index];
+      });
+    } else {
+      // Return a blank template if character doesn't exist yet
+      headers.forEach(header => result[header] = 0);
+      result['characterId'] = charId;
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify(result))
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({error: err.message}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+/**
+ * POST Request: Updates or creates character data.
+ * Triggered by: fetch(GAS_URL, { method: "POST", body: JSON.stringify(...) })
+ */
+function doPost(e) {
+  try {
+    const params = JSON.parse(e.postData.contents);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName("Stats");
+    
+    // Refresh data to get latest state
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    
+    const charId = params.id;
+    const statName = params.stat;
+    const value = params.value;
+    
+    let rowIndex = data.findIndex(r => r[0] === charId);
+    let colIndex = headers.indexOf(statName);
+    
+    // 1. If the stat column doesn't exist, create a new header
+    if (colIndex === -1) {
+      colIndex = headers.length;
+      sheet.getRange(1, colIndex + 1).setValue(statName);
+    }
+    
+    // 2. If the character row doesn't exist, append a new row
+    if (rowIndex === -1) {
+      sheet.appendRow([charId]);
+      rowIndex = sheet.getLastRow() - 1; 
+    }
+    
+    // 3. Update the specific cell (Spreadsheets are 1-indexed)
+    sheet.getRange(rowIndex + 1, colIndex + 1).setValue(value);
+    
+    return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
+    
+  } catch (err) {
+    return ContentService.createTextOutput("Error: " + err.message).setMimeType(ContentService.MimeType.TEXT);
+  }
+}
