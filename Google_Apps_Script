@@ -120,17 +120,64 @@ function updateHistoryLog(sheet, rowIndex, newText) {
   return ContentService.createTextOutput("Log Added").setMimeType(ContentService.MimeType.TEXT);
 }
 
+/**
+ * Run this function manually in the Apps Script Editor 
+ * to see what key is currently stored.
+ */
+function checkMyKey() {
+  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY');
+  if (!key) {
+    console.error("❌ NO KEY FOUND: The 'GEMINI_KEY' property is empty.");
+  } else {
+    const hiddenKey = key.substring(0, 4) + "..." + key.substring(key.length - 4);
+    console.log("✅ KEY DETECTED: " + hiddenKey);
+    console.log("Length: " + key.length + " characters.");
+  }
+}
+
+/**
+ * askSecretOracle: Communicates with Gemini API
+ * Ensure GEMINI_KEY is set in Project Settings > Script Properties.
+ * 
+ * Targets the confirmed working Gemini 1.5 Flash model.
+ */
 function askSecretOracle(userPrompt) {
   const API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY'); 
+  if (!API_KEY) return "VOID ERROR: NO KEY IN CORES.";
+
+  // We are using the v1 stable endpoint for speed and reliability
   const MODEL = "gemini-1.5-flash";
-  const URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
-  if (!API_KEY) return "VOID ERROR: API KEY MISSING.";
+  const URL = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${API_KEY}`;
+
   const payload = {
-    "contents": [{"parts": [{"text": "You are a Starforged Oracle. Gritty, cryptic, 2 sentences: " + userPrompt}]}],
-    "generationConfig": { "temperature": 0.8, "maxOutputTokens": 100 }
+    "contents": [{
+      "parts": [{
+        "text": "You are a Starforged AI Oracle. Provide a gritty, cryptic, 2-sentence response to: " + userPrompt
+      }]
+    }],
+    "generationConfig": { 
+      "temperature": 0.8, 
+      "maxOutputTokens": 100 // Reduced tokens for faster response
+    }
   };
+
   try {
-    const res = UrlFetchApp.fetch(URL, { "method": "post", "contentType": "application/json", "payload": JSON.stringify(payload) });
-    return JSON.parse(res.getContentText()).candidates[0].content.parts[0].text;
-  } catch (e) { return "SIGNAL LOST: ORACLE OFFLINE."; }
+    const res = UrlFetchApp.fetch(URL, {
+      "method": "post",
+      "contentType": "application/json",
+      "payload": JSON.stringify(payload),
+      "muteHttpExceptions": true 
+    });
+
+    const data = JSON.parse(res.getContentText());
+
+    if (res.getResponseCode() === 200) {
+      return data.candidates[0].content.parts[0].text;
+    } else {
+      console.error("Oracle API Error: " + res.getContentText());
+      return "VOID LINK ERROR: " + (data.error ? data.error.message : "SIGNAL LOST");
+    }
+  } catch (e) { 
+    return "SIGNAL LOST: SYSTEM CRASH."; 
+  }
 }
