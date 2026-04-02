@@ -48,7 +48,7 @@
 
     <script src="../../js/sync.js"></script>
     <script>
-        // Sector Data - In a future update, this could be pulled from the Sheet
+        // Sector Data
         const SECTOR_LOCS = [
             { name: "Ironholde", x: 25, y: 40 },
             { name: "Vanguard Station", x: 60, y: 20 },
@@ -59,13 +59,12 @@
         let isInitialized = false;
 
         async function initMap() {
-            // Wait for Auto-Discovery if necessary
+            // Neural Link Guard: Wait for sync.js discovery [cite: 14]
             if (!GAS_URL) {
                 setTimeout(initMap, 1000);
                 return;
             }
 
-            // Corrected: Uses 'loadStats' from sync.js
             const stats = await loadStats(charId);
             
             if (stats && stats.ship_pos) {
@@ -82,7 +81,7 @@
 
         function renderWaypoints() {
             const area = document.getElementById('map-area');
-            area.innerHTML = ""; // Clear existing
+            area.innerHTML = ""; 
             SECTOR_LOCS.forEach(loc => {
                 const dot = document.createElement('div');
                 dot.className = 'waypoint';
@@ -98,10 +97,10 @@
             updateShipUI(loc.x, loc.y);
             document.getElementById('status-msg').style.display = 'none';
             
-            // Save coordinates to the 'ship_pos' column
+            // Save coordinates to the 'ship_pos' column [cite: 17]
             await saveStat(charId, "ship_pos", `${loc.x},${loc.y}`);
             
-            // Log the move to the history log via server-side append
+            // Log move to unified history via Code.gs [cite: 27]
             const logMsg = isInitialized ? `NAV: Relocated to ${loc.name}` : `NAV: Initial jump to ${loc.name}`;
             await saveStat(charId, "history_entry", logMsg);
             
@@ -115,7 +114,6 @@
             ship.style.top = y + "%";
         }
 
-        // Boot up the map
         initMap();
     </script>
 </body>
