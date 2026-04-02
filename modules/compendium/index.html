@@ -2,25 +2,32 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../../css/style.css">
     <style>
         body { background: #050508; color: #e0e0e0; font-family: 'Courier New', monospace; padding: 10px; overflow-x: hidden; }
-        .tabs { display: flex; border-bottom: 1px solid #333; margin-bottom: 10px; position: sticky; top: 0; background: #050508; z-index: 5; }
-        .tab { padding: 8px 10px; cursor: pointer; font-size: 0.6rem; border: 1px solid transparent; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
-        .tab.active { border: 1px solid #333; border-bottom: 1px solid #050508; opacity: 1; color: var(--accent); }
         
-        .panel { display: none; padding-bottom: 40px; }
+        /* Navigation Tabs */
+        .tabs { display: flex; border-bottom: 1px solid #333; margin-bottom: 10px; position: sticky; top: 0; background: #050508; z-index: 5; flex-wrap: wrap; }
+        .tab { padding: 8px 12px; cursor: pointer; font-size: 0.65rem; border: 1px solid transparent; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; }
+        .tab.active { border: 1px solid #333; border-bottom: 1px solid #050508; opacity: 1; color: var(--accent); font-weight: bold; }
+        
+        /* Layout Panels */
+        .panel { display: none; padding-bottom: 40px; animation: fadeIn 0.3s ease; }
         .panel.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        select, button { background: #111; border: 1px solid #444; color: white; padding: 6px; width: 100%; margin-bottom: 8px; font-size: 0.7rem; }
-        button { cursor: pointer; font-weight: bold; text-transform: uppercase; }
-        button:hover { background: var(--accent); color: black; }
+        /* UI Elements */
+        select, button { background: #111; border: 1px solid #444; color: white; padding: 8px; width: 100%; margin-bottom: 8px; font-size: 0.75rem; border-radius: 4px; }
+        button { cursor: pointer; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; }
+        button:hover { background: var(--accent); color: black; border-color: var(--accent); }
 
-        /* Moves/Oracle Display */
-        .output-card { background: rgba(255,255,255,0.03); padding: 12px; border-left: 2px solid var(--accent); margin-top: 10px; font-size: 0.8rem; line-height: 1.4; }
-        .sync-btn { border: 1px solid #444; color: #888; background: none; margin-top: 10px; font-size: 0.6rem; }
+        /* Display Cards */
+        .output-card { background: rgba(255,255,255,0.03); padding: 12px; border-left: 2px solid var(--accent); margin-top: 10px; font-size: 0.85rem; line-height: 1.5; border-radius: 0 4px 4px 0; }
+        .sync-btn { border: 1px solid #444; color: #888; background: none; margin-top: 10px; font-size: 0.6rem; padding: 4px; width: auto; float: right; }
+        .npc-name { font-size: 1.1rem; color: var(--accent); margin-bottom: 5px; border-bottom: 1px solid #222; padding-bottom: 5px; text-transform: uppercase; }
         
-        .npc-name { font-size: 1.1rem; color: var(--accent); margin-bottom: 5px; border-bottom: 1px solid #222; padding-bottom: 5px; }
+        .truth-item { margin-bottom: 15px; padding: 10px; border: 1px solid #222; background: #00000044; border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -30,7 +37,7 @@
         <div class="tab" onclick="showPanel('oracles')">Oracles</div>
         <div class="tab" onclick="showPanel('npcs')">NPCs</div>
         <div class="tab" onclick="showPanel('truths')">Truths</div>
-        <div class="tab" onclick="showPanel('initiate')">INITIATE</div>
+        <div class="tab" onclick="showPanel('initiate')">INIT</div>
     </div>
 
     <div id="moves" class="panel active">
@@ -48,7 +55,7 @@
 
     <div id="npcs" class="panel">
         <button onclick="generateNPC()">GENERATE CONTACT/FOE</button>
-        <div id="npc-display" class="output-card">Click generate to scan for lifesigns...</div>
+        <div id="npc-display" class="output-card">Awaiting lifesign scan...</div>
     </div>
 
     <div id="truths" class="panel">
@@ -56,16 +63,16 @@
     </div>
 
     <div id="initiate" class="panel">
-        <div style="font-size:0.6rem; opacity:0.6; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;">NEURAL LINK INITIALIZATION</div>
-    
+        <div style="font-size:0.65rem; opacity:0.6; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px; color:var(--accent);">NEURAL LINK INITIALIZATION</div>
+        
         <button onclick="rollCreation('background')">ROLL BACKGROUND</button>
-        <div id="create-bg" class="output-card" style="font-size:0.7rem; margin-bottom:10px;">Awaiting background data...</div>
-    
+        <div id="create-bg" class="output-card" style="font-size:0.75rem; margin-bottom:10px;">Awaiting background data...</div>
+        
         <button onclick="rollCreation('starship')">ROLL STARSHIP NAME</button>
-        <div id="create-ship" class="output-card" style="font-size:0.7rem; margin-bottom:10px;">Awaiting hull identification...</div>
+        <div id="create-ship" class="output-card" style="font-size:0.75rem; margin-bottom:10px;">Awaiting hull identification...</div>
 
-        <button style="background:var(--accent); color:black; margin-top:15px;" onclick="finalizeCharacter()">INITIALIZE CHARACTER ROW</button>
-        <div id="init-status" style="font-size:0.6rem; color:var(--accent); margin-top:10px; text-align:center;"></div>
+        <button style="background:var(--accent); color:black; margin-top:15px; height: 50px;" onclick="finalizeCharacter()">INITIALIZE CHARACTER ROW</button>
+        <div id="init-status" style="font-size:0.7rem; color:var(--accent); margin-top:15px; text-align:center; font-weight: bold;"></div>
     </div>
 
     <script src="../../js/sync.js"></script>
@@ -74,33 +81,35 @@
         const DATA_URL = "https://raw.githubusercontent.com/rsek/datasworn/main/bundles/starforged.json";
 
         async function init() {
-            const res = await fetch(DATA_URL);
-            datasworn = await res.json();
-            
-            // Populate Moves
-            const moveCat = document.getElementById('move-cat');
-            Object.keys(datasworn.moves).forEach(k => moveCat.add(new Option(datasworn.moves[k].name, k)));
-            loadMoves();
+            try {
+                const res = await fetch(DATA_URL);
+                datasworn = await res.json();
+                
+                // Populate Moves
+                const moveCat = document.getElementById('move-cat');
+                Object.keys(datasworn.moves).forEach(k => moveCat.add(new Option(datasworn.moves[k].name, k)));
+                loadMoves();
 
-            // Populate Oracle Categories
-            const oraCat = document.getElementById('ora-cat');
-            Object.keys(datasworn.oracles).forEach(k => oraCat.add(new Option(datasworn.oracles[k].name, k)));
-            loadOracleTables();
-            
-            renderTruths();
+                // Populate Oracle Categories
+                const oraCat = document.getElementById('ora-cat');
+                Object.keys(datasworn.oracles).forEach(k => oraCat.add(new Option(datasworn.oracles[k].name, k)));
+                loadOracleTables();
+                
+                renderTruths();
+            } catch (e) {
+                console.error("Failed to load Datasworn:", e);
+            }
         }
 
         function showPanel(id) {
-            // Hide all panels and dim all tabs
-            document.querySelectorAll('.panel, .tab').forEach(el => el.classList.remove('active'));
-    
-           // Show the selected panel
-           document.getElementById(id).classList.add('active');
-    
-           // Highlight the clicked tab
-           if (event) {
-               event.currentTarget.classList.add('active');
-           }
+            document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            
+            document.getElementById(id).classList.add('active');
+            
+            // Highlight the correct tab based on the onclick attribute
+            const clickedTab = Array.from(document.querySelectorAll('.tab')).find(t => t.getAttribute('onclick').includes(id));
+            if (clickedTab) clickedTab.classList.add('active');
         }
         
         /* --- MOVES LOGIC --- */
@@ -123,7 +132,8 @@
             const cat = document.getElementById('ora-cat').value;
             const list = document.getElementById('ora-list');
             list.innerHTML = "";
-            Object.keys(datasworn.oracles[cat].contents || {}).forEach(k => list.add(new Option(datasworn.oracles[cat].contents[k].name, k)));
+            const contents = datasworn.oracles[cat].contents || {};
+            Object.keys(contents).forEach(k => list.add(new Option(contents[k].name, k)));
         }
         function rollOracle() {
             const cat = document.getElementById('ora-cat').value;
@@ -136,6 +146,7 @@
                     <div style="color:var(--accent); font-weight:bold;">${row.text}</div>
                     <div style="font-size:0.6rem; opacity:0.5; margin-top:5px;">Rolled: ${roll} on ${table.name}</div>
                     <button class="sync-btn" onclick="logToHistory('ORACLE: ${table.name} -> ${row.text}')">LOG RESULT</button>
+                    <div style="clear:both;"></div>
                 </div>`;
         }
 
@@ -153,19 +164,20 @@
             document.getElementById('npc-display').innerHTML = `
                 <div class="npc-name">${name}</div>
                 <div>${desc} ${role}</div>
-                <div style="margin-top:10px; font-style:italic;">Goal: ${goal}</div>
-                <button class="sync-btn" onclick="logToHistory('NPC: ${name} (${desc} ${role}) Goal: ${goal}')">LOG NPC</button>`;
+                <div style="margin-top:10px; font-style:italic; opacity: 0.8;">Goal: ${goal}</div>
+                <button class="sync-btn" onclick="logToHistory('NPC DISCOVERED: ${name} (${desc} ${role}) Goal: ${goal}')">LOG NPC</button>
+                <div style="clear:both;"></div>`;
         }
 
         /* --- TRUTHS LOGIC --- */
         function renderTruths() {
             const truths = datasworn.setting_truths;
             document.getElementById('truth-list').innerHTML = Object.keys(truths).map(k => `
-                <div style="margin-bottom:10px;">
-                    <div style="font-size:0.6rem; color:var(--accent)">${truths[k].name}</div>
+                <div class="truth-item">
+                    <div style="font-size:0.65rem; color:var(--accent); margin-bottom:5px; font-weight:bold;">${truths[k].name}</div>
                     <select onchange="saveTruth('${k}', this.value)">
-                        <option>Choose Truth...</option>
-                        ${truths[k].table.rows.map(r => `<option value="${r.text}">${r.text.substring(0,35)}...</option>`).join('')}
+                        <option>Select a Truth...</option>
+                        ${truths[k].table.rows.map(r => `<option value="${r.text}">${r.text.substring(0,40)}...</option>`).join('')}
                     </select>
                 </div>`).join('');
         }
@@ -181,47 +193,46 @@
 
         /* --- CHARACTER CREATION LOGIC --- */
         function rollCreation(type) {
-            const roll = (c, t) => {
-                const tab = datasworn.oracles[c].contents[t];
+            const getResult = (pathArray) => {
+                let current = datasworn.oracles;
+                pathArray.forEach(key => {
+                    if (current[key]) current = current[key];
+                    else if (current.contents && current.contents[key]) current = current.contents[key];
+                });
                 const r = Math.floor(Math.random() * 100) + 1;
-                return tab.rows.find(row => r >= row.floor && r <= row.ceiling).text;
+                const row = current.rows.find(row => r >= row.floor && r <= row.ceiling);
+                return row ? row.text : "Error reading data...";
             };
 
             if (type === 'background') {
-                const back = roll('characters', 'background');
-                document.getElementById('create-bg').innerText = back;
+                document.getElementById('create-bg').innerText = getResult(['characters', 'background']);
             }
             if (type === 'starship') {
-                const sName = roll('planets', 'starship_name'); // Datasworn puts ship names here
-                document.getElementById('create-ship').innerText = sName;
+                document.getElementById('create-ship').innerText = getResult(['space', 'starship_name']);
             }
         }
 
         async function finalizeCharacter() {
             const status = document.getElementById('init-status');
             status.innerText = "UPLINKING TO DATABASE...";
-    
+            
             const bg = document.getElementById('create-bg').innerText;
             const ship = document.getElementById('create-ship').innerText;
 
-            // 1. Set the Standard Starting Stats
-            // We send health first; since the ID doesn't exist, your Code.gs will 
-            // create the row, add the 'health' column, and set it to 5.
-            await saveStat(charId, "health", 5);
-            await saveStat(charId, "spirit", 5);
-            await saveStat(charId, "supply", 5);
-            await saveStat(charId, "momentum", 2);
-            await saveStat(charId, "edge", 2);
-            await saveStat(charId, "heart", 2);
-            await saveStat(charId, "iron", 2);
-            await saveStat(charId, "shadow", 2);
-            await saveStat(charId, "wits", 2);
-    
-            // 2. Log the background to the History
+            // Stats to initialize
+            const initialStats = {
+                "health": 5, "spirit": 5, "supply": 5, "momentum": 2, "xp": 0,
+                "edge": 2, "heart": 2, "iron": 2, "shadow": 2, "wits": 2
+            };
+
+            for (const [stat, val] of Object.entries(initialStats)) {
+                await saveStat(charId, stat, val);
+            }
+            
             await saveStat(charId, "history_entry", `CHARACTER INITIALIZED: ${charId}. Background: ${bg}. Starship: ${ship}.`);
-    
+            
             status.innerText = "SUCCESS: NEURAL LINK ESTABLISHED.";
-            alert("Character Created in Sheet!");
+            alert("Character template created in Google Sheet!");
         }
 
         init();
