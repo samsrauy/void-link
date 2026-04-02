@@ -6,67 +6,117 @@
     <style>
         body { background: #0b0d12; color: #00ff9d; font-family: 'Exo 2', sans-serif; overflow: hidden; margin: 0; }
         #navigation-deck { position: relative; width: 100vw; height: 100vh; background: radial-gradient(circle, #0a0a1a 0%, #000 100%); }
-        .waypoint { position: absolute; width: 12px; height: 12px; background: #fff; border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px #fff; z-index: 10; }
-        .waypoint-label { position: absolute; top: 15px; left: -20px; font-size: 0.6rem; color: #00ff9d; white-space: nowrap; }
-        #player-ship { position: absolute; width: 20px; height: 20px; border: 2px solid #ff0055; border-radius: 50%; transition: all 0.8s ease; opacity: 0; z-index: 20; }
+        
+        /* The Ship Icon */
+        #player-ship { 
+            position: absolute; width: 24px; height: 24px; 
+            border: 2px solid #ff0055; border-radius: 50%; 
+            transform: translate(-50%, -50%); /* Center on coordinates */
+            transition: all 1.2s cubic-bezier(0.4, 0, 0.2, 1); 
+            opacity: 0; z-index: 20; 
+            box-shadow: 0 0 15px #ff0055;
+        }
         #player-ship.active { opacity: 1; }
-        .status-overlay { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); border: 1px solid #ff0055; color: #ff0055; padding: 10px; font-size: 0.7rem; text-transform: uppercase; }
+
+        /* Waypoints */
+        .waypoint { 
+            position: absolute; width: 10px; height: 10px; 
+            background: #00ff9d; border-radius: 50%; 
+            cursor: pointer; z-index: 10; 
+            box-shadow: 0 0 8px #00ff9d;
+        }
+        .waypoint-label { 
+            position: absolute; top: 15px; left: 50%; 
+            transform: translateX(-50%); font-size: 0.6rem; 
+            white-space: nowrap; text-transform: uppercase; opacity: 0.7;
+        }
+
+        .status-overlay { 
+            position: absolute; bottom: 20px; left: 50%; 
+            transform: translateX(-50%); background: rgba(0,0,0,0.8); 
+            border: 1px solid #00ff9d; color: #00ff9d; 
+            padding: 8px 15px; font-size: 0.7rem; letter-spacing: 1px;
+        }
     </style>
 </head>
 <body class="theme-starforged">
     <div id="navigation-deck">
         <div id="map-area"></div>
         <div id="player-ship"></div>
-        <div id="status-msg" class="status-overlay">Initializing Nav-Link...</div>
+        <div id="status-msg" class="status-overlay">Establishing Neural Link...</div>
     </div>
 
     <script src="../../js/sync.js"></script>
     <script>
-        const LOCS = [
-            { name: "Ironholde", x: 20, y: 30 },
-            { name: "Vanguard Prime", x: 45, y: 60 },
-            { name: "The Drift", x: 75, y: 25 }
+        // Sector Data - In a future update, this could be pulled from the Sheet
+        const SECTOR_LOCS = [
+            { name: "Ironholde", x: 25, y: 40 },
+            { name: "Vanguard Station", x: 60, y: 20 },
+            { name: "The Shattered Reach", x: 80, y: 70 },
+            { name: "Deep Settlement 9", x: 15, y: 85 }
         ];
 
+        let isInitialized = false;
+
         async function initMap() {
-            if (!charId) return;
-            const stats = await loadStats(charId); // Corrected function name
-            if (stats && stats.ship_pos && stats.ship_pos !== "0,0") {
-                const [x, y] = stats.ship_pos.split(',');
-                moveShip(x, y);
-                document.getElementById('status-msg').style.display = 'none';
-            } else {
-                document.getElementById('status-msg').innerText = "Select Entry Vector";
+            // Wait for Auto-Discovery if necessary
+            if (!GAS_URL) {
+                setTimeout(initMap, 1000);
+                return;
             }
-            renderPoints();
+
+            // Corrected: Uses 'loadStats' from sync.js
+            const stats = await loadStats(charId);
+            
+            if (stats && stats.ship_pos) {
+                const [x, y] = stats.ship_pos.split(',');
+                updateShipUI(x, y);
+                document.getElementById('status-msg').style.display = 'none';
+                isInitialized = true;
+            } else {
+                document.getElementById('status-msg').innerText = "AWAITING ENTRY VECTOR";
+            }
+            
+            renderWaypoints();
         }
 
-        function renderPoints() {
+        function renderWaypoints() {
             const area = document.getElementById('map-area');
-            LOCS.forEach(l => {
+            area.innerHTML = ""; // Clear existing
+            SECTOR_LOCS.forEach(loc => {
                 const dot = document.createElement('div');
                 dot.className = 'waypoint';
-                dot.style.left = l.x + "%"; dot.style.top = l.y + "%";
-                dot.onclick = () => updatePos(l);
-                dot.innerHTML = `<div class="waypoint-label">${l.name}</div>`;
+                dot.style.left = loc.x + "%"; 
+                dot.style.top = loc.y + "%";
+                dot.onclick = () => handleMove(loc);
+                dot.innerHTML = `<div class="waypoint-label">${loc.name}</div>`;
                 area.appendChild(dot);
             });
         }
 
-        async function updatePos(l) {
-            moveShip(l.x, l.y);
+        async function handleMove(loc) {
+            updateShipUI(loc.x, loc.y);
             document.getElementById('status-msg').style.display = 'none';
-            await saveStat(charId, "ship_pos", `${l.x},${l.y}`);
-            await saveStat(charId, "history_entry", `NAV: Docked at ${l.name}`);
+            
+            // Save coordinates to the 'ship_pos' column
+            await saveStat(charId, "ship_pos", `${loc.x},${loc.y}`);
+            
+            // Log the move to the history log via server-side append
+            const logMsg = isInitialized ? `NAV: Relocated to ${loc.name}` : `NAV: Initial jump to ${loc.name}`;
+            await saveStat(charId, "history_entry", logMsg);
+            
+            isInitialized = true;
         }
 
-        function moveShip(x, y) {
-            const s = document.getElementById('player-ship');
-            s.classList.add('active');
-            s.style.left = x + "%"; s.style.top = y + "%";
+        function updateShipUI(x, y) {
+            const ship = document.getElementById('player-ship');
+            ship.classList.add('active');
+            ship.style.left = x + "%";
+            ship.style.top = y + "%";
         }
 
-        setTimeout(initMap, 500);
+        // Boot up the map
+        initMap();
     </script>
 </body>
 </html>
