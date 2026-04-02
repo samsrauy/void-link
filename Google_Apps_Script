@@ -23,78 +23,78 @@
  */
 
 /**
- * GET Request: Retrieves character data.
- * Triggered by: fetch(`${GAS_URL}?id=YourCharID`)
+ * GET Request: Retrieves character data OR handles Oracle queries.
  */
 function doGet(e) {
   try {
     const charId = e.parameter.id;
+    
+    // ORACLE OVERRIDE: If 'oracle' is in the URL, return LLM response immediately
+    if (e.parameter.oracle) {
+      const response = askSecretOracle(e.parameter.oracle);
+      return ContentService.createTextOutput(response).setMimeType(ContentService.MimeType.TEXT);
+    }
+
     if (!charId) throw new Error("No character ID provided.");
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName("Stats");
+    let sheet = ss.getSheetByName("Stats");
+    if (!sheet) {
+      sheet = ss.insertSheet("Stats");
+      sheet.appendRow(["characterId", "health", "momentum", "spirit", "supply", "history", "journal"]);
+    }
+
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    
-    // Find the row where the first column matches the characterId
     const row = data.find(r => r[0] === charId);
     
     let result = {};
     if (row) {
-      headers.forEach((header, index) => {
-        result[header] = row[index];
-      });
+      headers.forEach((header, index) => { result[header] = row[index]; });
     } else {
-      // Return a blank template if character doesn't exist yet
-      headers.forEach(header => result[header] = 0);
-      result['characterId'] = charId;
+      const newRow = [charId, 5, 2, 5, 5, "[]", ""];
+      sheet.appendRow(newRow);
+      headers.forEach((header, index) => { result[header] = newRow[index] || 0; });
     }
     
-    return ContentService.createTextOutput(JSON.stringify(result))
-      .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
       
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({error: err.message}))
-      .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({error: err.message})).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 /**
- * POST Request: Updates or creates character data.
- * Triggered by: fetch(GAS_URL, { method: "POST", body: JSON.stringify(...) })
+ * POST Request: Updates stats or logs history.
  */
 function doPost(e) {
   try {
     const params = JSON.parse(e.postData.contents);
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName("Stats");
-    
-    // Refresh data to get latest state
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    
     const charId = params.id;
     const statName = params.stat;
     const value = params.value;
     
     let rowIndex = data.findIndex(r => r[0] === charId);
-    let colIndex = headers.indexOf(statName);
+    if (rowIndex === -1) {
+      sheet.appendRow([charId]);
+      rowIndex = sheet.getLastRow() - 1;
+    }
+
+    if (statName === "history_entry") {
+      return updateHistoryLog(sheet, rowIndex, value);
+    }
     
-    // 1. If the stat column doesn't exist, create a new header
+    let colIndex = headers.indexOf(statName);
     if (colIndex === -1) {
       colIndex = headers.length;
       sheet.getRange(1, colIndex + 1).setValue(statName);
     }
     
-    // 2. If the character row doesn't exist, append a new row
-    if (rowIndex === -1) {
-      sheet.appendRow([charId]);
-      rowIndex = sheet.getLastRow() - 1; 
-    }
-    
-    // 3. Update the specific cell (Spreadsheets are 1-indexed)
     sheet.getRange(rowIndex + 1, colIndex + 1).setValue(value);
-    
     return ContentService.createTextOutput("Success").setMimeType(ContentService.MimeType.TEXT);
     
   } catch (err) {
@@ -102,71 +102,35 @@ function doPost(e) {
   }
 }
 
-/** * ========================================================================
- * MODULE: SECRET ORACLE (GEMINI LLM BRIDGE)
- * ------------------------------------------------------------------------
- * PURPOSE: This function acts as a "Narrative Engine" for the VTT. It 
- * connects the player's terminal to the Gemini 1.5 Flash API to provide 
- * gritty, immersive, and atmospheric descriptions. If you do NOT want to use the LLM, delete this block of code, from this comment to the end of the file, from your Code.gs file.
- * * SETUP:
- * 1. Obtain an API Key from https://aistudio.google.com/
- * 2. Go to Project Settings (Gear Icon) -> Script Properties.
- * 3. Add a property named 'GEMINI_KEY' and paste your key as the value.
- * 4. RE-DEPLOY as a "New Version" to authorize 'UrlFetchApp' permissions.
- * ========================================================================
- */
+function updateHistoryLog(sheet, rowIndex, newText) {
+  const headers = sheet.getDataRange().getValues()[0];
+  let colIndex = headers.indexOf("history");
+  if (colIndex === -1) {
+    colIndex = headers.length;
+    sheet.getRange(1, colIndex + 1).setValue("history");
+  }
+  const cell = sheet.getRange(rowIndex + 1, colIndex + 1);
+  let history = [];
+  try { history = JSON.parse(cell.getValue() || "[]"); } catch(e) { history = []; }
+  const now = new Date();
+  const timestamp = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
+  history.push({ time: timestamp, text: newText });
+  if (history.length > 50) history.shift();
+  cell.setValue(JSON.stringify(history));
+  return ContentService.createTextOutput("Log Added").setMimeType(ContentService.MimeType.TEXT);
+}
 
 function askSecretOracle(userPrompt) {
-  // CONFIGURATION
-  const scriptProps = PropertiesService.getScriptProperties();
-  const API_KEY = scriptProps.getProperty('GEMINI_KEY'); 
+  const API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY'); 
   const MODEL = "gemini-1.5-flash";
   const URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
-
-  // If key is missing, provide a helpful error in the UI
-  if (!API_KEY) {
-    return "Void Link Error: GEMINI_KEY not found in Script Properties.";
-  }
-
-  const systemInstructions = `
-    You are the Secret Oracle for a 'Starforged' TTRPG session. 
-    Your goal is to provide gritty, immersive, and brief (2-3 sentences) descriptions. 
-    Focus on the themes of the Forge: industrial decay, ancient mystery, and cosmic danger. 
-    Be evocative but cryptic. Never mention AI or game mechanics.
-    Answer the following player inquiry: 
-  `;
-
+  if (!API_KEY) return "VOID ERROR: API KEY MISSING.";
   const payload = {
-    "contents": [{
-      "parts": [{
-        "text": systemInstructions + userPrompt
-      }]
-    }],
-    "generationConfig": {
-      "temperature": 0.85, // Higher for more "creative" sci-fi flavor
-      "maxOutputTokens": 150
-    }
+    "contents": [{"parts": [{"text": "You are a Starforged Oracle. Gritty, cryptic, 2 sentences: " + userPrompt}]}],
+    "generationConfig": { "temperature": 0.8, "maxOutputTokens": 100 }
   };
-
-  const options = {
-    "method": "post",
-    "contentType": "application/json",
-    "payload": JSON.stringify(payload),
-    "muteHttpExceptions": true
-  };
-
   try {
-    const response = UrlFetchApp.fetch(URL, options);
-    const result = JSON.parse(response.getContentText());
-    
-    if (result.candidates && result.candidates[0].content) {
-      return result.candidates[0].content.parts[0].text;
-    } else {
-      console.error("API Error Response:", result);
-      return "The transmission is garbled. Check your API key or quota.";
-    }
-  } catch (e) {
-    console.error("Fetch Error:", e);
-    return "Void Link Failure: " + e.toString();
-  }
+    const res = UrlFetchApp.fetch(URL, { "method": "post", "contentType": "application/json", "payload": JSON.stringify(payload) });
+    return JSON.parse(res.getContentText()).candidates[0].content.parts[0].text;
+  } catch (e) { return "SIGNAL LOST: ORACLE OFFLINE."; }
 }
