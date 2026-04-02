@@ -38,8 +38,7 @@
         </div>
     </header>
 
-    <div id="asset-display" class="asset-grid">
-        </div>
+    <div id="asset-display" class="asset-grid"></div>
 
     <script src="../../js/datasworn.js"></script>
     <script src="../../js/sync.js"></script>
@@ -91,7 +90,6 @@
                 const card = document.createElement('div');
                 card.className = 'asset-card';
                 
-                // Build abilities HTML
                 let abilitiesHTML = '';
                 asset.abilities.forEach((ability, index) => {
                     abilitiesHTML += `
@@ -114,12 +112,16 @@
         }
 
         async function equipAsset(assetId, assetName) {
-            // Logging to the centralized history via Code.gs 
+            // Safety: Ensure API discovery is complete before sending 
+            if (!GAS_URL) {
+                alert("Neural Link establishing... please try again in a moment.");
+                return;
+            }
+
             const logMsg = `ASSET ACQUIRED: ${assetName}`;
+            // Correctly uses thin-sync history logging 
             await saveStat(charId, "history_entry", logMsg);
             
-            // Note: In the next module (asset-tracker), we will implement 
-            // the logic to add this ID to the 'assets' JSON array in the Sheet.
             alert(`${assetName} logged to history. Open Asset Tracker to finalize installation.`);
         }
 
