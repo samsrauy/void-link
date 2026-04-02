@@ -30,6 +30,7 @@
         <div class="tab" onclick="showPanel('oracles')">Oracles</div>
         <div class="tab" onclick="showPanel('npcs')">NPCs</div>
         <div class="tab" onclick="showPanel('truths')">Truths</div>
+        <div class="tab" onclick="showPanel('initiate')">INITIATE</div>
     </div>
 
     <div id="moves" class="panel active">
@@ -51,7 +52,20 @@
     </div>
 
     <div id="truths" class="panel">
-        <div id="truth-list"></div>
+       <div id="truth-list"></div>
+    </div>
+
+    <div id="initiate" class="panel">
+        <div style="font-size:0.6rem; opacity:0.6; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;">NEURAL LINK INITIALIZATION</div>
+    
+        <button onclick="rollCreation('background')">ROLL BACKGROUND</button>
+        <div id="create-bg" class="output-card" style="font-size:0.7rem; margin-bottom:10px;">Awaiting background data...</div>
+    
+        <button onclick="rollCreation('starship')">ROLL STARSHIP NAME</button>
+        <div id="create-ship" class="output-card" style="font-size:0.7rem; margin-bottom:10px;">Awaiting hull identification...</div>
+
+        <button style="background:var(--accent); color:black; margin-top:15px;" onclick="finalizeCharacter()">INITIALIZE CHARACTER ROW</button>
+        <div id="init-status" style="font-size:0.6rem; color:var(--accent); margin-top:10px; text-align:center;"></div>
     </div>
 
     <script src="../../js/sync.js"></script>
@@ -156,6 +170,51 @@
         async function logToHistory(text) {
             await saveStat(charId, "history_entry", text);
             alert("Logged to history.");
+        }
+
+        /* --- CHARACTER CREATION LOGIC --- */
+        function rollCreation(type) {
+            const roll = (c, t) => {
+                const tab = datasworn.oracles[c].contents[t];
+                const r = Math.floor(Math.random() * 100) + 1;
+                return tab.rows.find(row => r >= row.floor && r <= row.ceiling).text;
+            };
+
+            if (type === 'background') {
+                const back = roll('characters', 'background');
+                document.getElementById('create-bg').innerText = back;
+            }
+            if (type === 'starship') {
+                const sName = roll('planets', 'starship_name'); // Datasworn puts ship names here
+                document.getElementById('create-ship').innerText = sName;
+            }
+        }
+
+        async function finalizeCharacter() {
+            const status = document.getElementById('init-status');
+            status.innerText = "UPLINKING TO DATABASE...";
+    
+            const bg = document.getElementById('create-bg').innerText;
+            const ship = document.getElementById('create-ship').innerText;
+
+            // 1. Set the Standard Starting Stats
+            // We send health first; since the ID doesn't exist, your Code.gs will 
+            // create the row, add the 'health' column, and set it to 5.
+            await saveStat(charId, "health", 5);
+            await saveStat(charId, "spirit", 5);
+            await saveStat(charId, "supply", 5);
+            await saveStat(charId, "momentum", 2);
+            await saveStat(charId, "edge", 2);
+            await saveStat(charId, "heart", 2);
+            await saveStat(charId, "iron", 2);
+            await saveStat(charId, "shadow", 2);
+            await saveStat(charId, "wits", 2);
+    
+            // 2. Log the background to the History
+            await saveStat(charId, "history_entry", `CHARACTER INITIALIZED: ${charId}. Background: ${bg}. Starship: ${ship}.`);
+    
+            status.innerText = "SUCCESS: NEURAL LINK ESTABLISHED.";
+            alert("Character Created in Sheet!");
         }
 
         init();
