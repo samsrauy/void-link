@@ -7,102 +7,122 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; background: #050508; color: #00ff9d; font-family: 'Exo 2', sans-serif; overflow: hidden; }
         
-        /* Setup / Login Screen */
-        #setup-screen { 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            height: 100vh; text-align: center; background: radial-gradient(circle, #0a0a1a 0%, #000 100%);
-        }
-        .setup-box { background: rgba(0, 255, 153, 0.05); border: 1px solid #00ff9d; padding: 40px; border-radius: 8px; box-shadow: 0 0 30px rgba(0, 255, 153, 0.1); }
+        /* Login Screen */
+        #setup-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: radial-gradient(circle, #0a0a1a 0%, #000 100%); }
+        .setup-box { background: rgba(0, 255, 153, 0.05); border: 1px solid #00ff9d; padding: 40px; border-radius: 8px; text-align: center; }
         input { background: #000; border: 1px solid #00ff9d; color: #00ff9d; padding: 10px; margin: 10px 0; width: 300px; font-family: 'Share Tech Mono', monospace; }
-        .boot-btn { background: #00ff9d; color: #000; border: none; padding: 12px 30px; font-weight: bold; cursor: pointer; text-transform: uppercase; margin-top: 20px; }
+        .boot-btn { background: #00ff9d; color: #000; border: none; padding: 12px 30px; font-weight: bold; cursor: pointer; text-transform: uppercase; }
 
-        /* Main Dashboard Grid Fixes */
+        /* Main Dashboard Grid (2 Rows Now) */
         #dashboard { 
             display: none; 
             grid-template-columns: 350px 1fr 350px; 
-            /* Added a 3rd row for the browser */
-            grid-template-rows: 1fr 200px 200px; 
+            grid-template-rows: 1fr 300px; 
             height: 100vh; gap: 10px; padding: 10px; box-sizing: border-box; 
         }
         iframe { width: 100%; height: 100%; border: 1px solid #1a1c23; background: #0b0d12; border-radius: 4px; }
         
-        /* Grid Positioning Fixes */
-        .grid-char { grid-row: 1 / 4; } /* Extended to span all 3 rows */
+        .grid-char { grid-row: 1 / 3; }
         .grid-map { grid-column: 2; grid-row: 1; }
         .grid-journal { grid-column: 2; grid-row: 2; }
-        .grid-browser { grid-column: 2; grid-row: 3; } /* Fixed syntax (semicolon) */
         .grid-assets { grid-column: 3; grid-row: 1; }
-        .grid-oracle { grid-column: 3; grid-row: 2 / 4; } /* Oracle now spans the bottom right */
+        .grid-oracle { grid-column: 3; grid-row: 2; }
+
+        /* Hamburger Menu System */
+        #menu-toggle {
+            position: fixed; top: 20px; right: 20px; z-index: 100;
+            background: #00ff9d; color: #000; border: none; padding: 10px 15px;
+            font-weight: bold; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(0,255,153,0.3);
+        }
+        #side-menu {
+            position: fixed; top: 0; right: -500px; width: 450px; height: 100vh;
+            background: #050508; border-left: 1px solid #00ff9d; z-index: 99;
+            transition: right 0.3s ease; display: flex; flex-direction: column;
+        }
+        #side-menu.open { right: 0; }
+        .menu-tabs { display: flex; background: #111; }
+        .menu-tab { flex: 1; padding: 15px; text-align: center; cursor: pointer; font-size: 0.7rem; opacity: 0.5; border-bottom: 2px solid transparent; }
+        .menu-tab.active { opacity: 1; color: #00ff9d; border-bottom: 2px solid #00ff9d; }
+        .menu-frame-container { flex-grow: 1; }
     </style>
 </head>
 <body>
 
     <div id="setup-screen">
         <div class="setup-box">
-            <h1 style="letter-spacing: 5px;">VOID-LINK</h1>
-            <p style="opacity: 0.6; font-size: 0.8rem; margin-bottom: 30px;">NEURAL INTERFACE TERMINAL v3.1</p>
-            
+            <h1>VOID-LINK</h1>
             <input type="text" id="sheet-input" placeholder="ENTER SPREADSHEET ID">
             <br>
             <input type="text" id="name-input" placeholder="ENTER CHARACTER NAME">
             <br>
             <button class="boot-btn" onclick="establishLink()">Initialize Uplink</button>
-            
-            <p style="font-size: 0.6rem; margin-top: 20px; opacity: 0.4;">
-                The Spreadsheet ID is found in your Google Sheet URL between /d/ and /edit
-            </p>
+        </div>
+    </div>
+
+    <button id="menu-toggle" onclick="toggleMenu()" style="display:none;">☰ LIBRARY</button>
+
+    <div id="side-menu">
+        <div class="menu-tabs">
+            <div id="tab-comp" class="menu-tab active" onclick="switchMenu('compendium')">COMPENDIUM</div>
+            <div id="tab-brow" class="menu-tab" onclick="switchMenu('asset-browser')">BROWSER</div>
+        </div>
+        <div class="menu-frame-container">
+            <iframe id="frame-menu-content" src=""></iframe>
         </div>
     </div>
 
     <div id="dashboard">
-        <div class="grid-char">
-            <iframe id="frame-char" src=""></iframe>
-        </div>
-        <div class="grid-map">
-            <iframe id="frame-map" src=""></iframe>
-        </div>
-        <div class="grid-journal">
-            <iframe id="frame-journal" src=""></iframe>
-        </div>
-        <div class="grid-assets">
-            <iframe id="frame-tracker" src=""></iframe>
-        </div>
-        <div class="grid-oracle">
-            <iframe id="frame-oracle" src=""></iframe>
-        </div>
-        <div class="grid-browser">
-            <iframe id="frame-browser" src=""></iframe>
-        </div>
+        <div class="grid-char"><iframe id="frame-char"></iframe></div>
+        <div class="grid-map"><iframe id="frame-map"></iframe></div>
+        <div class="grid-journal"><iframe id="frame-journal"></iframe></div>
+        <div class="grid-assets"><iframe id="frame-tracker"></iframe></div>
+        <div class="grid-oracle"><iframe id="frame-oracle"></iframe></div>
     </div>
 
     <script>
         const params = new URLSearchParams(window.location.search);
         const sheetId = params.get('sheet');
         const charName = params.get('id');
+        let currentMenu = 'compendium';
 
         function init() {
             if (sheetId && charName) {
                 document.getElementById('setup-screen').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'grid';
+                document.getElementById('menu-toggle').style.display = 'block';
 
                 const query = `?sheet=${sheetId}&id=${charName}`;
                 document.getElementById('frame-char').src = `modules/character-sheet/index.html${query}`;
                 document.getElementById('frame-map').src = `modules/map/index.html${query}`;
                 document.getElementById('frame-journal').src = `modules/journal/index.html${query}`;
                 document.getElementById('frame-tracker').src = `modules/asset-tracker/index.html${query}`;
-                document.getElementById('frame-browser').src = `modules/asset-browser/index.html${query}`;
                 document.getElementById('frame-oracle').src = `modules/secret-oracle/index.html${query}`;
+                
+                // Set default menu content
+                switchMenu('compendium');
             }
+        }
+
+        function toggleMenu() {
+            document.getElementById('side-menu').classList.toggle('open');
+            document.getElementById('menu-toggle').innerText = 
+                document.getElementById('side-menu').classList.contains('open') ? '✕ CLOSE' : '☰ LIBRARY';
+        }
+
+        function switchMenu(module) {
+            currentMenu = module;
+            const query = `?sheet=${sheetId}&id=${charName}`;
+            document.getElementById('frame-menu-content').src = `modules/${module}/index.html${query}`;
+            
+            document.getElementById('tab-comp').classList.toggle('active', module === 'compendium');
+            document.getElementById('tab-brow').classList.toggle('active', module === 'asset-browser');
         }
 
         function establishLink() {
             const sId = document.getElementById('sheet-input').value.trim();
             const cName = document.getElementById('name-input').value.trim();
-
             if (sId && cName) {
                 window.location.href = `index.html?sheet=${sId}&id=${cName}`;
-            } else {
-                alert("VOID ERROR: Credentials incomplete.");
             }
         }
 
