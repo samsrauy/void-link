@@ -4,90 +4,81 @@
     <meta charset="UTF-8">
     <link rel="stylesheet" href="../../css/style.css">
     <style>
-        body { background: #050508; color: #d8b4fe; font-family: 'Courier New', monospace; padding: 15px; border: 1px solid #4b0082; }
-        
-        .oracle-header { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 2px; color: #a855f7; margin-bottom: 15px; display: flex; justify-content: space-between; }
-        
-        .input-area { display: flex; flex-direction: column; gap: 10px; }
-        textarea { 
-            background: #000; border: 1px solid #4b0082; color: #e0e7ff; 
-            padding: 10px; font-size: 0.8rem; resize: none; height: 60px; outline: none;
+        body { background: transparent; color: #a855f7; font-family: 'Courier New', monospace; padding: 10px; }
+        .oracle-container { 
+            border: 1px solid #a855f744; 
+            background: rgba(0,0,0,0.9); 
+            padding: 15px; 
+            border-radius: 4px;
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.1);
         }
+        .header { font-size: 0.6rem; letter-spacing: 3px; margin-bottom: 10px; opacity: 0.7; color: #a855f7; }
         
-        .query-btn { 
-            background: #4b0082; color: white; border: none; padding: 8px; 
-            cursor: pointer; font-size: 0.7rem; font-weight: bold; transition: 0.3s;
-        }
-        .query-btn:hover { background: #6366f1; box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); }
-
-        #response-box { 
-            margin-top: 20px; min-height: 100px; font-size: 0.85rem; line-height: 1.6;
-            border-left: 2px solid #4b0082; padding-left: 15px; font-style: italic;
-        }
-
-        /* Animation for AI "Thinking" */
-        .thinking { animation: pulse 2s infinite; opacity: 0.6; }
-        @keyframes pulse {
-            0%, 100% { text-shadow: 0 0 5px #4b0082; color: #d8b4fe; }
-            50% { text-shadow: 0 0 20px #a855f7; color: #ffffff; }
+        #oracle-display { 
+            min-height: 80px; 
+            font-size: 0.9rem; 
+            line-height: 1.5; 
+            margin-bottom: 15px; 
+            color: #d8b4fe;
+            border-left: 2px solid #a855f7;
+            padding-left: 10px;
         }
 
-        .transmit-btn { 
-            margin-top: 15px; width: 100%; background: none; border: 1px solid #a855f7; 
-            color: #a855f7; font-size: 0.6rem; padding: 5px; cursor: pointer; display: none;
+        .input-wrap { display: flex; gap: 5px; border-top: 1px solid #a855f722; pt: 10px; }
+        input { 
+            flex: 1; background: transparent; border: none; color: #fff; 
+            font-family: 'Exo 2', sans-serif; font-size: 0.8rem; outline: none;
         }
-        .transmit-btn:hover { background: rgba(168, 85, 247, 0.1); }
+        button { 
+            background: #a855f7; color: #000; border: none; 
+            padding: 4px 10px; cursor: pointer; font-weight: bold; font-size: 0.7rem;
+        }
+        button:hover { background: #fff; }
+        .loading { font-style: italic; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
     </style>
 </head>
 <body>
 
-    <div class="oracle-header">
-        <span>✦ Void-Link Terminal</span>
-        <span id="status-light" style="color:#4ade80">● Online</span>
+    <div class="oracle-container">
+        <div class="header">VOID-LINK: SECRET ORACLE</div>
+        <div id="oracle-display">Enter a inquiry to begin decryption...</div>
+        
+        <div class="input-wrap">
+            <input type="text" id="oracle-input" placeholder="Query the void..." onkeydown="if(event.key==='Enter') invokeOracle()">
+            <button onclick="invokeOracle()">SEND</button>
+        </div>
     </div>
-
-    <div class="input-area">
-        <textarea id="user-query" placeholder="Formulate your inquiry to the Void..."></textarea>
-        <button class="query-btn" onclick="invokeOracle()">CONSULT THE ORACLE</button>
-    </div>
-
-    <div id="response-box">Awaiting transmission...</div>
-    <button id="transmit-btn" class="transmit-btn" onclick="syncToHistory()">LOG TO CREW CHRONICLE</button>
 
     <script src="../../js/sync.js"></script>
     <script>
         async function invokeOracle() {
-            const query = document.getElementById('user-query').value;
-            const box = document.getElementById('response-box');
-            const btn = document.getElementById('transmit-btn');
-            
+            const input = document.getElementById('oracle-input');
+            const display = document.getElementById('oracle-display');
+            const query = input.value.trim();
+
             if (!query) return;
 
-            box.innerText = "Interpreting cosmic interference...";
-            box.classList.add('thinking');
-            btn.style.display = "none";
+            // Visual feedback
+            input.value = "";
+            display.innerHTML = '<span class="loading">DECRYPTING TRANSMISSION...</span>';
 
-            // Calls the Google Apps Script function
-            google.script.run
-                .withSuccessHandler(response => {
-                    box.classList.remove('thinking');
-                    box.innerText = response;
-                    btn.style.display = "block";
-                })
-                .withFailureHandler(err => {
-                    box.classList.remove('thinking');
-                    box.innerText = "Connection lost. The Void is silent.";
-                })
-                .askSecretOracle(query);
-        }
+            try {
+                // We use the GAS_URL from sync.js and the 'oracle' param from our new Code.gs
+                const response = await fetch(`${GAS_URL}?id=${charId}&oracle=${encodeURIComponent(query)}`);
+                
+                if (!response.ok) throw new Error("Link Severed");
+                
+                const text = await response.text();
+                display.innerHTML = text;
 
-        async function syncToHistory() {
-            const query = document.getElementById('user-query').value;
-            const response = document.getElementById('response-box').innerText;
-            const entry = `VOID ORACLE » Q: "${query}" | A: "${response}"`;
-            
-            await saveStat(charId, "history_entry", entry);
-            alert("Transmission Logged.");
+                // Log the consultation to the character's history log
+                await saveStat(charId, "history_entry", `Oracle Consulted: "${query}"`);
+                
+            } catch (e) {
+                display.innerHTML = '<span style="color: #ef4444;">ERROR: VOID-LINK UNSTABLE. RE-DEPLOY SCRIPT.</span>';
+                console.error("Oracle Error:", e);
+            }
         }
     </script>
 </body>
