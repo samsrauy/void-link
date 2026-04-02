@@ -45,15 +45,16 @@
         const timestamp = document.getElementById('last-saved');
 
         async function initJournal() {
-            // Wait for Auto-Discovery
+            // Neural Link Guard: Wait for sync.js discovery
             if (!GAS_URL) {
+                console.log("Journal: Establishing uplink...");
                 setTimeout(initJournal, 1000);
                 return;
             }
 
             indicator.classList.add('status-active');
             
-            // Load existing notes
+            // Load existing notes from the 'journal' column in the Sheet
             const stats = await loadStats(charId);
             if (stats && stats.journal) {
                 textarea.value = stats.journal;
@@ -64,15 +65,17 @@
         }
 
         async function manualSave() {
+            if (!GAS_URL) return;
+            
             saveBtn.disabled = true;
             saveBtn.innerText = "UPLOADING...";
             
             const content = textarea.value;
             
-            // Save to the 'journal' column in the Google Sheet
+            // Primary save to the journal column
             await saveStat(charId, "journal", content);
             
-            // Optional: Log that a journal entry was made to the history
+            // Unified history update
             await saveStat(charId, "history_entry", "LOG: Archive entry committed.");
 
             const now = new Date();
@@ -81,7 +84,7 @@
             saveBtn.innerText = "Commit to Archive";
         }
 
-        // Auto-save logic: Save every 5 minutes if there are changes
+        // Auto-save: Every 5 minutes if content has changed
         let lastValue = "";
         setInterval(() => {
             if (textarea.value !== lastValue && textarea.value !== "") {
