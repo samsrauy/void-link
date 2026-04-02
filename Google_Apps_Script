@@ -107,7 +107,7 @@ function doPost(e) {
  * ------------------------------------------------------------------------
  * PURPOSE: This function acts as a "Narrative Engine" for the VTT. It 
  * connects the player's terminal to the Gemini 1.5 Flash API to provide 
- * gritty, immersive, and atmospheric descriptions.
+ * gritty, immersive, and atmospheric descriptions. If you do NOT want to use the LLM, delete this block of code, from this comment to the end of the file, from your Code.gs file.
  * * SETUP:
  * 1. Obtain an API Key from https://aistudio.google.com/
  * 2. Go to Project Settings (Gear Icon) -> Script Properties.
