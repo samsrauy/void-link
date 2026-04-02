@@ -1,140 +1,91 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Nav-Computer: Hex-Sector</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../../css/style.css">
-    <style>
-        body { margin: 0; background: #050508; color: #00ff99; font-family: 'Courier New', monospace; overflow: hidden; }
-        #map-canvas { display: block; cursor: crosshair; }
-        .ui-layer { position: absolute; top: 10px; left: 10px; pointer-events: none; }
-        .controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #333; pointer-events: auto; }
-        .manifest { position: absolute; top: 10px; right: 10px; width: 200px; background: rgba(0,0,0,0.9); border: 1px solid #00ff99; padding: 10px; font-size: 0.7rem; max-height: 80vh; overflow-y: auto; }
-        .loc-item { margin-bottom: 10px; border-bottom: 1px solid #222; padding-bottom: 5px; }
-        button { background: #111; color: #00ff99; border: 1px solid #00ff99; padding: 5px 10px; cursor: pointer; }
-        button:hover { background: #00ff99; color: #000; }
-    </style>
-</head>
-<body>
+<style>
+    #player-ship { opacity: 0; pointer-events: none; }
+    #player-ship.active { opacity: 1; }
+    
+    .status-overlay {
+        position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+        background: rgba(255, 0, 85, 0.2); border: 1px solid #ff0055;
+        color: #ff0055; padding: 10px 20px; font-size: 0.7rem; 
+        text-transform: uppercase; letter-spacing: 2px; z-index: 100;
+        animation: blink 2s infinite;
+    }
+    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+</style>
 
-    <div class="ui-layer">
-        <div id="sector-name" style="font-weight:bold; font-size: 1.2rem;">SCANNER OFFLINE</div>
-        <div id="coords" style="font-size: 0.7rem;">HEX: 0,0</div>
-    </div>
+<div id="status-msg" class="status-overlay">Awaiting Entry Vector...</div>
 
-    <div class="manifest" id="manifest">
-        <div style="text-decoration: underline; margin-bottom: 5px;">SECTOR MANIFEST</div>
-        <div id="loc-list">Perform Deep Scan...</div>
-    </div>
+<script>
+    let isInitialized = false;
 
-    <canvas id="map-canvas"></canvas>
-
-    <div class="controls">
-        <button onclick="generateSector()">DEEP SCAN</button>
-        <button onclick="saveMap()">SAVE TO LOG</button>
-    </div>
-
-    <script src="../../js/sync.js"></script>
-    <script>
-        const canvas = document.getElementById('map-canvas');
-        const ctx = canvas.getContext('2d');
-        const HEX_SIZE = 35;
-        let sectorData = { stars: [] };
-        let shipPos = { q: 0, r: 0 };
-
-        // Helper: Hex Math
-        function hexToPixel(q, r) {
-            const x = HEX_SIZE * (Math.sqrt(3) * q + Math.sqrt(3)/2 * r);
-            const y = HEX_SIZE * (3/2 * r);
-            return { x: x + canvas.width/2, y: y + canvas.height/2 };
+    async function initMap() {
+        const stats = await getStats(charId);
+        const savedPos = stats.ship_pos;
+        
+        // Only show the ship if we have real coordinates (not 0,0 or null)
+        if (savedPos && savedPos !== "0,0") {
+            const [x, y] = savedPos.split(',');
+            updateShipUI(x, y);
+            document.getElementById('status-msg').style.display = 'none';
+            isInitialized = true;
+        } else {
+            // Ship is hidden, waiting for first click
+            document.getElementById('player-ship').classList.remove('active');
+            document.getElementById('status-msg').innerText = "Select Sector Entry Point";
         }
+        renderRegion();
+    }
 
-        function drawHex(q, r) {
-            const pos = hexToPixel(q, r);
-            ctx.beginPath();
-            for (let i = 0; i < 6; i++) {
-                const angle = 2 * Math.PI / 6 * (i + 0.5);
-                ctx.lineTo(pos.x + HEX_SIZE * Math.cos(angle), pos.y + HEX_SIZE * Math.sin(angle));
-            }
-            ctx.closePath();
-            ctx.strokeStyle = "rgba(0, 255, 153, 0.1)";
-            ctx.stroke();
-        }
-
-        function drawShip() {
-            const pos = hexToPixel(shipPos.q, shipPos.r);
-            ctx.fillStyle = "#ff4e50";
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y - 10);
-            ctx.lineTo(pos.x - 7, pos.y + 8);
-            ctx.lineTo(pos.x + 7, pos.y + 8);
-            ctx.closePath();
-            ctx.fill();
-        }
-
-        function generateSector() {
-            const prefixes = ["Acheron", "Hades", "Vanguard", "Delta"];
-            const suffixes = ["Reach", "Void", "Nexus", "Station"];
-            sectorData.stars = [];
+    async function handleLocationClick(loc) {
+        if (!isInitialized) {
+            // INITIAL POSITION LOGIC
+            isInitialized = true;
+            document.getElementById('status-msg').style.display = 'none';
+            document.getElementById('player-ship').classList.add('active');
             
-            for(let i=0; i<4; i++) {
-                sectorData.stars.push({
-                    name: prefixes[Math.floor(Math.random()*prefixes.length)] + "-" + Math.floor(Math.random()*99),
-                    info: suffixes[Math.floor(Math.random()*suffixes.length)],
-                    q: Math.floor(Math.random()*6-3),
-                    r: Math.floor(Math.random()*6-3)
-                });
-            }
-            renderUI();
-            draw();
+            await saveStat(charId, "history_entry", `SYSTEM: Trans-space entry at ${loc.name}`);
+        } else {
+            // NORMAL TRAVEL LOGIC (This is where the Jump Button will go later)
+            const currentPos = (await getStats(charId)).ship_pos;
+            if (currentPos === `${loc.x},${loc.y}`) return; // Already here
+            
+            await saveStat(charId, "history_entry", `NAV: Adjusting course to ${loc.name}`);
         }
 
-        function renderUI() {
-            const list = document.getElementById('loc-list');
-            list.innerHTML = sectorData.stars.map(s => `
-                <div class="loc-item">
-                    <b>${s.name}</b><br>
-                    <span style="color:#666">${s.info}</span>
-                </div>
-            `).join('');
-            document.getElementById('sector-name').innerText = "SECTOR ACTIVE";
-        }
+        // Move ship and save
+        updateShipUI(loc.x, loc.y);
+        await saveStat(charId, "ship_pos", `${loc.x},${loc.y}`);
+    }
 
-        async function saveMap() {
-            await saveStat(charId, "map_data", JSON.stringify(sectorData));
-            alert("Sector Data Uploaded to Neural Link.");
-        }
+    function updateShipUI(x, y) {
+        const ship = document.getElementById('player-ship');
+        ship.classList.add('active');
+        ship.style.left = x + "%";
+        ship.style.top = y + "%";
+    }
 
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for(let q=-10; q<10; q++) {
-                for(let r=-10; r<10; r++) drawHex(q, r);
-            }
-            sectorData.stars.forEach(s => {
-                const pos = hexToPixel(s.q, s.r);
-                ctx.fillStyle = "#facc15";
-                ctx.beginPath(); ctx.arc(pos.x, pos.y, 4, 0, Math.PI*2); ctx.fill();
-            });
-            drawShip();
-        }
+    // Update your renderRegion function to use the new handler
+    function renderRegion() {
+        const mapArea = document.getElementById('map-area');
+        const list = document.getElementById('manifest-list');
+        mapArea.innerHTML = "";
+        list.innerHTML = "";
 
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            draw();
+        SECTOR_DATA[currentRegion].forEach(loc => {
+            const dot = document.createElement('div');
+            dot.className = 'waypoint';
+            dot.style.left = loc.x + "%";
+            dot.style.top = loc.y + "%";
+            // USE THE NEW HANDLER
+            dot.onclick = () => handleLocationClick(loc);
+            
+            dot.innerHTML = `<div class="waypoint-label">${loc.name}</div>`;
+            mapArea.appendChild(dot);
+
+            const entry = document.createElement('div');
+            entry.className = 'manifest-entry';
+            entry.innerHTML = `<strong>${loc.name}</strong><br><small>${loc.type}</small>`;
+            entry.onclick = () => handleLocationClick(loc);
+            list.appendChild(entry);
         });
-
-        // Initialize
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        startHeartbeat(async () => {
-            const remote = await loadStats(charId);
-            if(remote && remote.map_data) {
-                sectorData = JSON.parse(remote.map_data);
-                renderUI();
-                draw();
-            }
-        });
-    </script>
-</body>
-</html>
+    }
+</script>
