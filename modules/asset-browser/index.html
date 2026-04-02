@@ -2,142 +2,143 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../../css/style.css">
     <style>
-        .browser-container { padding: 15px; max-width: 500px; margin: auto; }
+        body { background: #050508; color: #e0e0e0; font-family: 'Courier New', monospace; }
+        .browser-container { padding: 10px; max-width: 500px; margin: auto; }
         
         /* Filter Bar */
-        .filter-bar { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; border-bottom: 1px solid var(--border); }
-        .filter-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text); padding: 5px 12px; border-radius: 20px; font-size: 0.65rem; cursor: pointer; white-space: nowrap; }
-        .filter-btn.active { background: var(--accent); color: black; border-color: var(--accent); }
+        .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; border-bottom: 1px solid #333; scrollbar-width: thin; }
+        .filter-btn { background: #111; border: 1px solid #444; color: #888; padding: 4px 12px; border-radius: 15px; font-size: 0.6rem; cursor: pointer; white-space: nowrap; text-transform: uppercase; }
+        .filter-btn.active { background: var(--accent); color: black; border-color: var(--accent); font-weight: bold; }
 
-        /* Carousel Area */
+        /* Carousel */
         .carousel { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .nav-btn { background: none; border: 1px solid var(--border); color: white; cursor: pointer; padding: 10px; border-radius: 50%; width: 40px; height: 40px; }
+        .nav-btn { background: #111; border: 1px solid #444; color: white; cursor: pointer; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .nav-btn:hover { border-color: var(--accent); color: var(--accent); }
         
-        /* Card Preview */
         .asset-preview { 
-            flex-grow: 1; border: 1px solid var(--border); border-radius: 8px; 
-            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.4) 100%);
-            padding: 20px; min-height: 350px; position: relative;
+            flex-grow: 1; border: 1px solid #333; border-radius: 8px; 
+            background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.6) 100%);
+            padding: 15px; min-height: 320px; position: relative;
             animation: fadeIn 0.3s ease;
         }
-        .a-type { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 2px; opacity: 0.5; }
-        .a-name { font-size: 1.4rem; color: var(--accent); font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
-        .a-ability { font-size: 0.85rem; line-height: 1.4; margin-bottom: 12px; padding-left: 15px; position: relative; opacity: 0.8; }
+        .a-type { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 2px; opacity: 0.5; color: var(--accent); }
+        .a-name { font-size: 1.2rem; color: #fff; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #222; padding-bottom: 5px; }
+        .a-ability { font-size: 0.75rem; line-height: 1.4; margin-bottom: 10px; padding-left: 15px; position: relative; opacity: 0.8; }
         .a-ability::before { content: "•"; position: absolute; left: 0; color: var(--accent); }
         
         .equip-btn { 
-            width: 100%; margin-top: 15px; padding: 10px; 
+            width: 100%; margin-top: 10px; padding: 8px; 
             background: #4ade80; color: black; font-weight: bold; border: none; 
-            border-radius: 4px; cursor: pointer; text-transform: uppercase; font-size: 0.7rem;
+            border-radius: 4px; cursor: pointer; text-transform: uppercase; font-size: 0.65rem;
         }
         .equip-btn.owned { background: none; border: 1px solid #4ade80; color: #4ade80; cursor: default; }
+        #counter { text-align: center; font-size: 0.55rem; opacity: 0.4; margin-top: 8px; letter-spacing: 1px; }
 
-        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
 
     <div class="browser-container">
         <div id="filters" class="filter-bar">
-            <button class="filter-btn active" onclick="setCategory('all')">All</button>
+            <button id="btn-all" class="filter-btn active" onclick="setCategory('all')">ALL SYSTEMS</button>
         </div>
 
         <div class="carousel">
             <button class="nav-btn" onclick="move(-1)">◀</button>
-            
             <div id="asset-card" class="asset-preview">
-                <div id="card-content">Select a category to begin scanning...</div>
+                <div id="card-content" style="font-size:0.7rem; opacity:0.5; text-align:center; padding-top:100px;">INITIATING SENSORS...</div>
             </div>
-
             <button class="nav-btn" onclick="move(1)">▶</button>
         </div>
         
-        <div id="counter" style="text-align: center; font-size: 0.6rem; opacity: 0.4; margin-top: 10px;">0 / 0</div>
+        <div id="counter">0 / 0</div>
     </div>
 
-    <script src="../../js/datasworn.js"></script>
     <script src="../../js/sync.js"></script>
     <script>
         let allAssets = [];
         let filteredAssets = [];
         let currentIndex = 0;
-        let currentCategory = 'all';
         let ownedAssets = [];
+        const DATA_URL = "https://cdn.jsdelivr.net/gh/rsek/datasworn@main/bundles/starforged.json";
 
         async function init() {
-            const game = new URLSearchParams(window.location.search).get('game') || 'starforged';
-            document.body.classList.add(`theme-${game}`);
-
-            // 1. Fetch Data
-            const data = await fetchDatasworn(game, 'assets.json');
-            
-            // 2. Flatten Assets for the carousel
-            for (let catKey in data.assets) {
-                const category = data.assets[catKey];
-                // Add filter button
-                createFilterBtn(category.name, catKey);
+            try {
+                const res = await fetch(DATA_URL);
+                const data = await res.json();
                 
-                for (let assetKey in category.assets) {
-                    let asset = category.assets[assetKey];
-                    asset.slug = assetKey;
-                    asset.catName = category.name;
-                    allAssets.push(asset);
+                // Flatten Datasworn Assets
+                for (let catKey in data.assets) {
+                    const category = data.assets[catKey];
+                    createFilterBtn(category.name, catKey);
+                    
+                    for (let assetKey in category.contents) {
+                        let asset = category.contents[assetKey];
+                        asset.slug = assetKey;
+                        asset.catName = category.name;
+                        allAssets.push(asset);
+                    }
                 }
+
+                // Load Owned Assets from Sheet
+                const saved = await loadStats(charId);
+                if (saved && saved.owned_assets) {
+                    try { ownedAssets = JSON.parse(saved.owned_assets); } catch(e) { ownedAssets = []; }
+                }
+
+                filteredAssets = [...allAssets];
+                renderCard();
+            } catch (e) {
+                document.getElementById('card-content').innerHTML = `<span style="color:red">SCANNER ERROR: ${e.message}</span>`;
             }
-
-            // 3. Load Owned Assets from Sheet
-            const saved = await loadStats(charId);
-            ownedAssets = JSON.parse(saved.owned_assets || "[]");
-
-            filteredAssets = [...allAssets];
-            renderCard();
         }
 
         function createFilterBtn(name, key) {
             const btn = document.createElement('button');
             btn.className = 'filter-btn';
             btn.innerText = name;
-            btn.onclick = () => setCategory(key, btn);
+            btn.id = `btn-${key}`;
+            btn.onclick = () => setCategory(key);
             document.getElementById('filters').appendChild(btn);
         }
 
-        function setCategory(key, btn) {
+        function setCategory(key) {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            if(btn) btn.classList.add('active');
+            const activeBtn = document.getElementById(key === 'all' ? 'btn-all' : `btn-${key}`);
+            if(activeBtn) activeBtn.classList.add('active');
             
-            currentCategory = key;
             filteredAssets = (key === 'all') ? allAssets : allAssets.filter(a => a.asset_type.includes(key));
             currentIndex = 0;
             renderCard();
         }
 
         function move(dir) {
-            currentIndex += dir;
-            if (currentIndex < 0) currentIndex = filteredAssets.length - 1;
-            if (currentIndex >= filteredAssets.length) currentIndex = 0;
+            if (filteredAssets.length === 0) return;
+            currentIndex = (currentIndex + dir + filteredAssets.length) % filteredAssets.length;
             renderCard();
         }
 
         function renderCard() {
-            const asset = filteredAssets[currentIndex];
             const container = document.getElementById('card-content');
-            const isOwned = ownedAssets.includes(asset.slug);
-
+            const asset = filteredAssets[currentIndex];
             if (!asset) {
-                container.innerHTML = "No assets found.";
+                container.innerHTML = "No assets found in this sector.";
                 return;
             }
 
+            const isOwned = ownedAssets.includes(asset.slug);
             let abilitiesHTML = asset.abilities.map(ab => `<div class="a-ability">${ab.text}</div>`).join('');
             
             container.innerHTML = `
                 <div class="a-type">${asset.catName}</div>
                 <div class="a-name">${asset.name}</div>
-                <div style="max-height: 200px; overflow-y: auto;">${abilitiesHTML}</div>
+                <div style="max-height: 180px; overflow-y: auto; padding-right:5px;">${abilitiesHTML}</div>
                 <button class="equip-btn ${isOwned ? 'owned' : ''}" onclick="equipAsset('${asset.slug}')">
-                    ${isOwned ? '✓ Currently Equipped' : 'Equip Asset (Spend XP)'}
+                    ${isOwned ? '✓ SYSTEM EQUIPPED' : 'ACQUIRE MODULE (SPEND XP)'}
                 </button>
             `;
 
@@ -146,15 +147,10 @@
 
         async function equipAsset(slug) {
             if (ownedAssets.includes(slug)) return;
-            
             ownedAssets.push(slug);
             await saveStat(charId, "owned_assets", JSON.stringify(ownedAssets));
-            
-            // Log it
-            await saveStat(charId, "history_entry", `New Asset Acquired: ${slug.toUpperCase()}`);
-            
+            await saveStat(charId, "history_entry", `COMM-LOG: New Asset Acquired: ${slug.toUpperCase()}`);
             renderCard();
-            alert("Asset added to your database!");
         }
 
         init();
