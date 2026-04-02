@@ -5,151 +5,178 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../../css/style.css">
     <style>
-        body { background: #050508; color: #e0e0e0; font-family: 'Courier New', monospace; }
-        .browser-container { padding: 10px; max-width: 500px; margin: auto; }
+        body { background: rgba(5, 5, 8, 0.95); color: #e0e0e0; font-family: 'Exo 2', sans-serif; padding: 15px; }
+        .browser-container { max-width: 500px; margin: 0 auto; }
         
         /* Filter Bar */
-        .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; border-bottom: 1px solid #333; scrollbar-width: thin; }
-        .filter-btn { background: #111; border: 1px solid #444; color: #888; padding: 4px 12px; border-radius: 15px; font-size: 0.6rem; cursor: pointer; white-space: nowrap; text-transform: uppercase; }
-        .filter-btn.active { background: var(--accent); color: black; border-color: var(--accent); font-weight: bold; }
-
-        /* Carousel */
-        .carousel { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-        .nav-btn { background: #111; border: 1px solid #444; color: white; cursor: pointer; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-        .nav-btn:hover { border-color: var(--accent); color: var(--accent); }
-        
-        .asset-preview { 
-            flex-grow: 1; border: 1px solid #333; border-radius: 8px; 
-            background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(0,0,0,0.6) 100%);
-            padding: 15px; min-height: 320px; position: relative;
-            animation: fadeIn 0.3s ease;
+        .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px solid #333; }
+        .filter-btn { 
+            background: #1a1a1a; border: 1px solid #444; color: #888; 
+            padding: 4px 12px; border-radius: 20px; cursor: pointer; 
+            white-space: nowrap; font-size: 0.7rem; transition: 0.2s;
         }
-        .a-type { font-size: 0.55rem; text-transform: uppercase; letter-spacing: 2px; opacity: 0.5; color: var(--accent); }
-        .a-name { font-size: 1.2rem; color: #fff; font-weight: bold; margin-bottom: 8px; border-bottom: 1px solid #222; padding-bottom: 5px; }
-        .a-ability { font-size: 0.75rem; line-height: 1.4; margin-bottom: 10px; padding-left: 15px; position: relative; opacity: 0.8; }
-        .a-ability::before { content: "•"; position: absolute; left: 0; color: var(--accent); }
+        .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+        /* Card Visuals */
+        .asset-card { 
+            background: #000; border: 1px solid #333; border-radius: 8px; 
+            padding: 20px; position: relative; min-height: 350px;
+            display: flex; flex-direction: column;
+        }
+        .a-type { color: var(--accent); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
+        .a-name { font-size: 1.5rem; font-weight: bold; margin-bottom: 15px; color: #fff; }
+        
+        .ability { font-size: 0.85rem; margin-bottom: 12px; opacity: 0.8; line-height: 1.4; padding-left: 15px; position: relative; }
+        .ability::before { content: "•"; position: absolute; left: 0; color: var(--accent); }
+
+        /* Controls */
+        .nav-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+        .nav-btn { background: #222; border: 1px solid #444; color: white; padding: 8px 15px; cursor: pointer; border-radius: 4px; }
+        .nav-btn:hover { border-color: var(--accent); }
         
         .equip-btn { 
-            width: 100%; margin-top: 10px; padding: 8px; 
-            background: #4ade80; color: black; font-weight: bold; border: none; 
-            border-radius: 4px; cursor: pointer; text-transform: uppercase; font-size: 0.65rem;
+            width: 100%; margin-top: 15px; padding: 10px; 
+            background: transparent; border: 1px solid var(--accent); 
+            color: var(--accent); font-weight: bold; cursor: pointer;
+            transition: 0.3s;
         }
-        .equip-btn.owned { background: none; border: 1px solid #4ade80; color: #4ade80; cursor: default; }
-        #counter { text-align: center; font-size: 0.55rem; opacity: 0.4; margin-top: 8px; letter-spacing: 1px; }
+        .equip-btn.owned { background: #4ade80; color: black; border-color: #4ade80; }
+        .equip-btn:hover { background: var(--accent); color: white; }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        #loader { text-align: center; padding: 50px; opacity: 0.5; font-style: italic; }
     </style>
 </head>
 <body>
 
     <div class="browser-container">
-        <div id="filters" class="filter-bar">
-            <button id="btn-all" class="filter-btn active" onclick="setCategory('all')">ALL SYSTEMS</button>
+        <div id="filter-list" class="filter-bar">
+            <button class="filter-btn active" onclick="filterAssets('all')">ALL</button>
         </div>
 
-        <div class="carousel">
-            <button class="nav-btn" onclick="move(-1)">◀</button>
-            <div id="asset-card" class="asset-preview">
-                <div id="card-content" style="font-size:0.7rem; opacity:0.5; text-align:center; padding-top:100px;">INITIATING SENSORS...</div>
+        <div id="loader">RETRIVING DATASWORN ARCHIVES...</div>
+
+        <div id="asset-display" style="display:none;">
+            <div class="asset-card">
+                <div id="a-type" class="a-type">CATEGORY</div>
+                <div id="a-name" class="a-name">Asset Name</div>
+                <div id="a-abilities"></div>
+                <div style="flex-grow: 1;"></div>
+                <button id="equip-trigger" class="equip-btn" onclick="toggleEquip()">ACQUIRE ASSET</button>
             </div>
-            <button class="nav-btn" onclick="move(1)">▶</button>
+
+            <div class="nav-controls">
+                <button class="nav-btn" onclick="move(-1)">PREV</button>
+                <span id="counter" style="font-size: 0.8rem; opacity: 0.5;">0 / 0</span>
+                <button class="nav-btn" onclick="move(1)">NEXT</button>
+            </div>
         </div>
-        
-        <div id="counter">0 / 0</div>
     </div>
 
     <script src="../../js/sync.js"></script>
     <script>
+        const DATA_URL = "https://cdn.jsdelivr.net/gh/rsek/datasworn@main/pkg/nodejs/@datasworn/starforged/json/starforged.json";
+        
         let allAssets = [];
         let filteredAssets = [];
-        let currentIndex = 0;
         let ownedAssets = [];
-        const DATA_URL = "https://cdn.jsdelivr.net/gh/rsek/datasworn@main/bundles/starforged.json";
+        let currentIndex = 0;
+        let currentFilter = 'all';
 
         async function init() {
             try {
                 const res = await fetch(DATA_URL);
+                if (!res.ok) throw new Error("Connection failed");
                 const data = await res.json();
-                
-                // Flatten Datasworn Assets
+
+                // Build the asset list from the nested contents
                 for (let catKey in data.assets) {
                     const category = data.assets[catKey];
-                    createFilterBtn(category.name, catKey);
-                    
+                    addFilterButton(category.name, catKey);
+
                     for (let assetKey in category.contents) {
                         let asset = category.contents[assetKey];
                         asset.slug = assetKey;
                         asset.catName = category.name;
+                        asset.catId = catKey;
                         allAssets.push(asset);
                     }
                 }
 
-                // Load Owned Assets from Sheet
+                // Load character's owned assets
                 const saved = await loadStats(charId);
                 if (saved && saved.owned_assets) {
                     try { ownedAssets = JSON.parse(saved.owned_assets); } catch(e) { ownedAssets = []; }
                 }
 
                 filteredAssets = [...allAssets];
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('asset-display').style.display = 'block';
                 renderCard();
             } catch (e) {
-                document.getElementById('card-content').innerHTML = `<span style="color:red">SCANNER ERROR: ${e.message}</span>`;
+                document.getElementById('loader').innerText = "ARCHIVE OFFLINE: " + e.message;
             }
         }
 
-        function createFilterBtn(name, key) {
+        function addFilterButton(name, id) {
             const btn = document.createElement('button');
             btn.className = 'filter-btn';
-            btn.innerText = name;
-            btn.id = `btn-${key}`;
-            btn.onclick = () => setCategory(key);
-            document.getElementById('filters').appendChild(btn);
+            btn.innerText = name.toUpperCase();
+            btn.onclick = () => filterAssets(id, btn);
+            document.getElementById('filter-list').appendChild(btn);
         }
 
-        function setCategory(key) {
+        function filterAssets(id, btnElement) {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            const activeBtn = document.getElementById(key === 'all' ? 'btn-all' : `btn-${key}`);
-            if(activeBtn) activeBtn.classList.add('active');
-            
-            filteredAssets = (key === 'all') ? allAssets : allAssets.filter(a => a.asset_type.includes(key));
+            if (btnElement) btnElement.classList.add('active');
+            else document.querySelector('.filter-btn').classList.add('active');
+
+            filteredAssets = (id === 'all') ? allAssets : allAssets.filter(a => a.catId === id);
             currentIndex = 0;
             renderCard();
         }
 
-        function move(dir) {
-            if (filteredAssets.length === 0) return;
-            currentIndex = (currentIndex + dir + filteredAssets.length) % filteredAssets.length;
-            renderCard();
-        }
-
         function renderCard() {
-            const container = document.getElementById('card-content');
             const asset = filteredAssets[currentIndex];
-            if (!asset) {
-                container.innerHTML = "No assets found in this sector.";
-                return;
-            }
+            if (!asset) return;
 
-            const isOwned = ownedAssets.includes(asset.slug);
-            let abilitiesHTML = asset.abilities.map(ab => `<div class="a-ability">${ab.text}</div>`).join('');
+            document.getElementById('a-type').innerText = asset.catName;
+            document.getElementById('a-name').innerText = asset.name;
             
-            container.innerHTML = `
-                <div class="a-type">${asset.catName}</div>
-                <div class="a-name">${asset.name}</div>
-                <div style="max-height: 180px; overflow-y: auto; padding-right:5px;">${abilitiesHTML}</div>
-                <button class="equip-btn ${isOwned ? 'owned' : ''}" onclick="equipAsset('${asset.slug}')">
-                    ${isOwned ? '✓ SYSTEM EQUIPPED' : 'ACQUIRE MODULE (SPEND XP)'}
-                </button>
-            `;
+            const abArea = document.getElementById('a-abilities');
+            abArea.innerHTML = asset.abilities.map(ab => `<div class="ability">${ab.text}</div>`).join('');
+
+            const equipBtn = document.getElementById('equip-trigger');
+            if (ownedAssets.includes(asset.slug)) {
+                equipBtn.innerText = "OWNED / EQUIPPED";
+                equipBtn.classList.add('owned');
+            } else {
+                equipBtn.innerText = "ACQUIRE ASSET";
+                equipBtn.classList.remove('owned');
+            }
 
             document.getElementById('counter').innerText = `${currentIndex + 1} / ${filteredAssets.length}`;
         }
 
-        async function equipAsset(slug) {
-            if (ownedAssets.includes(slug)) return;
-            ownedAssets.push(slug);
+        function move(dir) {
+            currentIndex += dir;
+            if (currentIndex < 0) currentIndex = filteredAssets.length - 1;
+            if (currentIndex >= filteredAssets.length) currentIndex = 0;
+            renderCard();
+        }
+
+        async function toggleEquip() {
+            const asset = filteredAssets[currentIndex];
+            const idx = ownedAssets.indexOf(asset.slug);
+
+            if (idx === -1) {
+                ownedAssets.push(asset.slug);
+                await saveStat(charId, "history_entry", `COMM-LOG: New Asset Acquired: ${asset.name}`);
+            } else {
+                ownedAssets.splice(idx, 1);
+                await saveStat(charId, "history_entry", `COMM-LOG: Asset Decommissioned: ${asset.name}`);
+            }
+
             await saveStat(charId, "owned_assets", JSON.stringify(ownedAssets));
-            await saveStat(charId, "history_entry", `COMM-LOG: New Asset Acquired: ${slug.toUpperCase()}`);
             renderCard();
         }
 
