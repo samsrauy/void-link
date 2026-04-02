@@ -1,85 +1,83 @@
+/**
+ * PROJECT: Starforged Void-Link Sync (Client Side)
+ * This file handles the communication between the UI and Google Sheets.
+ */
+
 const syncParams = new URLSearchParams(window.location.search);
 const GAS_URL = syncParams.get('api');
 const charId = syncParams.get('id') || 'global_user';
 
 /**
- * Sends data to the Google Sheet (POST)
+ * Sends a single stat update to the Google Sheet.
+ * We now let the server handle the "History" merging to prevent data loss.
  */
 async function saveStat(id, statName, value) {
     if (!GAS_URL) return;
 
-    // Fix: If we are saving history, we must be careful not to overwrite 
-    // simultaneous rolls. 
-    if (statName === "history_entry") {
-        const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const entry = { time: timestamp, text: value };
-        
-        // We send the single entry to a special 'history_push' stat 
-        // which your GAS Code.gs should handle by appending, 
-        // OR we handle the merge here with a slight delay.
-        const currentData = await loadStats(id);
-        let history = [];
-        try { 
-            history = (typeof currentData.history === 'string') 
-                ? JSON.parse(currentData.history) 
-                : (currentData.history || []); 
-        } catch(e) { history = []; }
-        
-        history.push(entry);
-        if (history.length > 25) history.shift(); // Increased to 25 for better logging
-        
-        statName = "history";
-        value = JSON.stringify(history);
-    }
-
     try {
-        // We use 'no-cors' for POST because GAS doesn't return proper CORS headers 
-        // on successful execution, but 'no-cors' still sends the data!
+        // We send the specific stat and value. 
+        // If statName is "history_entry", Code.gs will append it to the log.
         await fetch(GAS_URL, {
             method: "POST",
-            mode: "no-cors", 
+            mode: "no-cors", // Required for Google Apps Script Web Apps
             cache: "no-cache",
-            body: JSON.stringify({ id: id, stat: statName, value: value })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                id: id, 
+                stat: statName, 
+                value: value 
+            })
         });
-    } catch (e) { console.error("Sync write error:", e); }
+        console.log(`Uplink: ${statName} updated.`);
+    } catch (e) {
+        console.error("Sync Write Error:", e);
+    }
 }
 
 /**
- * Retrieves data from the Google Sheet (GET)
+ * Retrieves the full character object from the Google Sheet.
+ * Matches the call used in map/index.html
  */
 async function loadStats(id) {
     if (!GAS_URL) return null;
 
     try {
-        const t = new Date().getTime();
-        const finalUrl = `${GAS_URL}?id=${id}&t=${t}`;
+        const cacheBuster = new Date().getTime();
+        const finalUrl = `${GAS_URL}?id=${id}&t=${cacheBuster}`;
 
         const response = await fetch(finalUrl, {
             method: "GET",
             redirect: "follow"
         });
 
-        if (!response.ok) return null;
+        if (!response.ok) throw new Error("Network response was not ok");
+        
         const data = await response.json();
         return data;
     } catch (error) {
-        console.error("Sync read error:", error);
+        console.error("Sync Read Error:", error);
         return null;
     }
 }
 
 /**
- * Heartbeat Engine with randomized jitter
+ * Heartbeat Engine
+ * Periodically refreshes data to keep the UI in sync with the Sheet.
  */
-function startHeartbeat(callback, interval = 35000) {
+function startHeartbeat(callback, interval = 30000) {
     if (typeof callback !== 'function') return;
 
-    // Initial immediate load
+    // Initial load
     callback();
 
-    const jitter = Math.floor(Math.random() * 5000);
-    setTimeout(() => {
-        setInterval(callback, interval);
-        console.log(`Neural Link: Heartbeat active (+${jitter}ms jitter)`);
-    }, jitter);
+    // Set interval for subsequent refreshes
+    return setInterval(() => {
+        console.log("Neural Link: Heartbeat pulse...");
+        callback();
+    }, interval);
+}
+
+// Global helper to get parameters if needed by other modules
+function getUrlParam(name) {
+    return syncParams.get(name);
 }
