@@ -6,10 +6,9 @@
     <style>
         body { background: #0b0d12; color: #e2e4e9; padding: 15px; font-family: 'Exo 2', sans-serif; }
         .tracker-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--accent); padding-bottom: 10px; margin-bottom: 20px; }
-        
         .empty-state { text-align: center; opacity: 0.5; margin-top: 50px; font-style: italic; }
         
-        /* Compact Asset Cards for the Tracker */
+        /* Compact Asset Cards */
         .owned-assets { display: flex; flex-direction: column; gap: 15px; }
         .asset-card { 
             background: #1a1c23; border: 1px solid #454d5d; 
@@ -17,10 +16,7 @@
         }
         .asset-top { display: flex; justify-content: space-between; margin-bottom: 8px; }
         .asset-name { font-weight: bold; color: var(--accent); font-size: 0.9rem; }
-        
         .ability-box { font-size: 0.75rem; line-height: 1.4; background: rgba(0,0,0,0.3); padding: 8px; margin-top: 5px; border-radius: 4px; }
-        .ability-box.locked { opacity: 0.4; grayscale: 100%; }
-        
         .remove-btn { color: #ff4444; border: none; background: none; font-size: 0.6rem; cursor: pointer; text-transform: uppercase; }
         .remove-btn:hover { text-decoration: underline; }
     </style>
@@ -28,11 +24,11 @@
 <body class="theme-starforged">
     <div class="tracker-header">
         <div style="font-size: 0.8rem; letter-spacing: 2px;">ACTIVE ASSETS</div>
-        <button class="sync-btn" onclick="refreshTracker()" style="width:auto; margin:0;">REFRESH LINK</button>
+        <button class="sync-btn" onclick="refreshTracker()" style="width:auto; margin:0; font-size:0.6rem;">REFRESH LINK</button>
     </div>
 
     <div id="tracker-display" class="owned-assets">
-        <div class="empty-state">Scanning manifest...</div>
+        <div class="empty-state">Initializing Neural Link...</div>
     </div>
 
     <script src="../../js/datasworn.js"></script>
@@ -42,24 +38,31 @@
         let ownedAssetIds = [];
 
         async function init() {
+            // Neural Link Guard: Wait for sync.js discovery
+            if (!GAS_URL) {
+                console.log("Tracker: Waiting for handshake...");
+                setTimeout(init, 1000);
+                return;
+            }
+
+            // Load library and start heartbeat
             datasworn = await DATASWORN_CONFIG.fetchData(); [cite: 6]
-            refreshTracker();
+            if (datasworn) {
+                startHeartbeat(refreshTracker, 20000); 
+            } else {
+                document.getElementById('tracker-display').innerHTML = '<div class="empty-state">Error: Datasworn library offline.</div>';
+            }
         }
 
         async function refreshTracker() {
             const display = document.getElementById('tracker-display');
-            
-            // 1. Load stats from Google Sheet
             const stats = await loadStats(charId); [cite: 7, 21]
             
-            if (!stats || !stats.assets) {
-                display.innerHTML = '<div class="empty-state">No assets detected in ship manifest.</div>';
-                return;
-            }
+            if (!stats) return;
 
-            // 2. Parse the assets string (it's stored as a JSON array in the sheet)
+            // Parse existing assets or initialize empty [cite: 18, 20]
             try {
-                ownedAssetIds = JSON.parse(stats.assets); [cite: 18]
+                ownedAssetIds = stats.assets ? JSON.parse(stats.assets) : []; 
             } catch(e) {
                 ownedAssetIds = [];
             }
@@ -69,7 +72,6 @@
                 return;
             }
 
-            // 3. Render the cards
             display.innerHTML = "";
             ownedAssetIds.forEach(id => {
                 const assetData = findAssetInDatasworn(id);
@@ -77,13 +79,11 @@
             });
         }
 
-        /**
-         * Helper to crawl the nested Datasworn object for a specific ID
-         */
         function findAssetInDatasworn(targetId) {
             for (let cat in datasworn.assets) {
-                for (let sub in datasworn.assets[cat].collections) {
-                    const contents = datasworn.assets[cat].collections[sub].contents;
+                const collections = datasworn.assets[cat].collections;
+                for (let sub in collections) {
+                    const contents = collections[sub].contents;
                     if (contents[targetId]) return contents[targetId];
                 }
             }
@@ -96,7 +96,7 @@
             card.className = 'asset-card';
             
             let abilitiesHTML = '';
-            asset.abilities.forEach((ab, i) => {
+            asset.abilities.forEach((ab) => {
                 abilitiesHTML += `<div class="ability-box"><strong>•</strong> ${ab.text}</div>`;
             });
 
@@ -113,13 +113,10 @@
         async function removeAsset(id) {
             if (!confirm("Confirm asset decommissioning?")) return;
             
-            // Remove from local array
             ownedAssetIds = ownedAssetIds.filter(itemId => itemId !== id);
             
-            // Save updated JSON array back to Google Sheet
-            await saveStat(charId, "assets", JSON.stringify(ownedAssetIds)); [cite: 7, 24, 29]
-            
-            // Log to history
+            // Thin-sync update to sheet [cite: 7, 24, 29]
+            await saveStat(charId, "assets", JSON.stringify(ownedAssetIds)); 
             await saveStat(charId, "history_entry", `ASSET REMOVED: ${id}`); [cite: 7, 28, 32]
             
             refreshTracker();
