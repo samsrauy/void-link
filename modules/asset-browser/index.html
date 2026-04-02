@@ -2,182 +2,125 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../../css/style.css">
     <style>
-        body { background: rgba(5, 5, 8, 0.95); color: #e0e0e0; font-family: 'Exo 2', sans-serif; padding: 15px; }
-        .browser-container { max-width: 500px; margin: 0 auto; }
+        body { background: #0b0d12; color: #e2e4e9; padding: 15px; font-family: 'Exo 2', sans-serif; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        select { background: #1a1c23; color: var(--accent); border: 1px solid #454d5d; padding: 8px; font-size: 0.8rem; text-transform: uppercase; }
         
-        /* Filter Bar */
-        .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px solid #333; }
-        .filter-btn { 
-            background: #1a1a1a; border: 1px solid #444; color: #888; 
-            padding: 4px 12px; border-radius: 20px; cursor: pointer; 
-            white-space: nowrap; font-size: 0.7rem; transition: 0.2s;
-        }
-        .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
-
-        /* Card Visuals */
+        /* Asset Card Styling */
+        .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
         .asset-card { 
-            background: #000; border: 1px solid #333; border-radius: 8px; 
-            padding: 20px; position: relative; min-height: 350px;
-            display: flex; flex-direction: column;
+            background: #161922; border: 1px solid #454d5d; border-top: 4px solid var(--accent);
+            padding: 15px; position: relative; transition: transform 0.2s;
         }
-        .a-type { color: var(--accent); font-size: 0.6rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 5px; }
-        .a-name { font-size: 1.5rem; font-weight: bold; margin-bottom: 15px; color: #fff; }
+        .asset-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+        .asset-type { font-size: 0.6rem; opacity: 0.5; text-transform: uppercase; letter-spacing: 1px; }
+        .asset-name { font-size: 1.1rem; font-weight: bold; margin: 5px 0; color: var(--accent); }
+        .asset-requirement { font-style: italic; font-size: 0.75rem; margin-bottom: 10px; opacity: 0.8; }
         
-        .ability { font-size: 0.85rem; margin-bottom: 12px; opacity: 0.8; line-height: 1.4; padding-left: 15px; position: relative; }
-        .ability::before { content: "•"; position: absolute; left: 0; color: var(--accent); }
-
-        /* Controls */
-        .nav-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
-        .nav-btn { background: #222; border: 1px solid #444; color: white; padding: 8px 15px; cursor: pointer; border-radius: 4px; }
-        .nav-btn:hover { border-color: var(--accent); }
+        .ability { font-size: 0.8rem; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .ability-text { line-height: 1.4; }
         
         .equip-btn { 
-            width: 100%; margin-top: 15px; padding: 10px; 
-            background: transparent; border: 1px solid var(--accent); 
-            color: var(--accent); font-weight: bold; cursor: pointer;
-            transition: 0.3s;
+            margin-top: 15px; width: 100%; background: transparent; 
+            border: 1px solid var(--accent); color: var(--accent); 
+            padding: 5px; cursor: pointer; font-size: 0.7rem; font-weight: bold;
         }
-        .equip-btn.owned { background: #4ade80; color: black; border-color: #4ade80; }
-        .equip-btn:hover { background: var(--accent); color: white; }
-
-        #loader { text-align: center; padding: 50px; opacity: 0.5; font-style: italic; }
+        .equip-btn:hover { background: var(--accent); color: #000; }
     </style>
 </head>
-<body>
+<body class="theme-starforged">
+    <header>
+        <div class="controls">
+            <select id="asset-category" onchange="populateSubCategories()"></select>
+            <select id="asset-subcategory" onchange="renderAssets()"></select>
+        </div>
+    </header>
 
-    <div class="browser-container">
-        <div id="filter-list" class="filter-bar">
-            <button class="filter-btn active" onclick="filterAssets('all')">ALL</button>
+    <div id="asset-display" class="asset-grid">
         </div>
 
-        <div id="loader">RETRIVING DATASWORN ARCHIVES...</div>
-
-        <div id="asset-display" style="display:none;">
-            <div class="asset-card">
-                <div id="a-type" class="a-type">CATEGORY</div>
-                <div id="a-name" class="a-name">Asset Name</div>
-                <div id="a-abilities"></div>
-                <div style="flex-grow: 1;"></div>
-                <button id="equip-trigger" class="equip-btn" onclick="toggleEquip()">ACQUIRE ASSET</button>
-            </div>
-
-            <div class="nav-controls">
-                <button class="nav-btn" onclick="move(-1)">PREV</button>
-                <span id="counter" style="font-size: 0.8rem; opacity: 0.5;">0 / 0</span>
-                <button class="nav-btn" onclick="move(1)">NEXT</button>
-            </div>
-        </div>
-    </div>
-
+    <script src="../../js/datasworn.js"></script>
     <script src="../../js/sync.js"></script>
     <script>
-        const DATA_URL = "https://cdn.jsdelivr.net/gh/rsek/datasworn@main/pkg/nodejs/@datasworn/starforged/json/starforged.json";
-        
-        let allAssets = [];
-        let filteredAssets = [];
-        let ownedAssets = [];
-        let currentIndex = 0;
-        let currentFilter = 'all';
+        let datasworn = null;
 
         async function init() {
-            try {
-                const res = await fetch(DATA_URL);
-                if (!res.ok) throw new Error("Connection failed");
-                const data = await res.json();
-
-                // Build the asset list from the nested contents
-                for (let catKey in data.assets) {
-                    const category = data.assets[catKey];
-                    addFilterButton(category.name, catKey);
-
-                    for (let assetKey in category.contents) {
-                        let asset = category.contents[assetKey];
-                        asset.slug = assetKey;
-                        asset.catName = category.name;
-                        asset.catId = catKey;
-                        allAssets.push(asset);
-                    }
-                }
-
-                // Load character's owned assets
-                const saved = await loadStats(charId);
-                if (saved && saved.owned_assets) {
-                    try { ownedAssets = JSON.parse(saved.owned_assets); } catch(e) { ownedAssets = []; }
-                }
-
-                filteredAssets = [...allAssets];
-                document.getElementById('loader').style.display = 'none';
-                document.getElementById('asset-display').style.display = 'block';
-                renderCard();
-            } catch (e) {
-                document.getElementById('loader').innerText = "ARCHIVE OFFLINE: " + e.message;
+            // Use the global DATASWORN_CONFIG from datasworn.js 
+            datasworn = await DATASWORN_CONFIG.fetchData();
+            if (datasworn && datasworn.assets) {
+                populateCategories();
+            } else {
+                document.getElementById('asset-display').innerHTML = "DATASWORN LINK SEVERED";
             }
         }
 
-        function addFilterButton(name, id) {
-            const btn = document.createElement('button');
-            btn.className = 'filter-btn';
-            btn.innerText = name.toUpperCase();
-            btn.onclick = () => filterAssets(id, btn);
-            document.getElementById('filter-list').appendChild(btn);
+        function populateCategories() {
+            const catSelect = document.getElementById('asset-category');
+            for (const key in datasworn.assets) {
+                const option = new Option(datasworn.assets[key].name, key);
+                catSelect.add(option);
+            }
+            populateSubCategories();
         }
 
-        function filterAssets(id, btnElement) {
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            if (btnElement) btnElement.classList.add('active');
-            else document.querySelector('.filter-btn').classList.add('active');
-
-            filteredAssets = (id === 'all') ? allAssets : allAssets.filter(a => a.catId === id);
-            currentIndex = 0;
-            renderCard();
-        }
-
-        function renderCard() {
-            const asset = filteredAssets[currentIndex];
-            if (!asset) return;
-
-            document.getElementById('a-type').innerText = asset.catName;
-            document.getElementById('a-name').innerText = asset.name;
+        function populateSubCategories() {
+            const catKey = document.getElementById('asset-category').value;
+            const subSelect = document.getElementById('asset-subcategory');
+            subSelect.innerHTML = "";
             
-            const abArea = document.getElementById('a-abilities');
-            abArea.innerHTML = asset.abilities.map(ab => `<div class="ability">${ab.text}</div>`).join('');
-
-            const equipBtn = document.getElementById('equip-trigger');
-            if (ownedAssets.includes(asset.slug)) {
-                equipBtn.innerText = "OWNED / EQUIPPED";
-                equipBtn.classList.add('owned');
-            } else {
-                equipBtn.innerText = "ACQUIRE ASSET";
-                equipBtn.classList.remove('owned');
+            const collections = datasworn.assets[catKey].collections;
+            for (const key in collections) {
+                const option = new Option(collections[key].name, key);
+                subSelect.add(option);
             }
-
-            document.getElementById('counter').innerText = `${currentIndex + 1} / ${filteredAssets.length}`;
+            renderAssets();
         }
 
-        function move(dir) {
-            currentIndex += dir;
-            if (currentIndex < 0) currentIndex = filteredAssets.length - 1;
-            if (currentIndex >= filteredAssets.length) currentIndex = 0;
-            renderCard();
+        function renderAssets() {
+            const catKey = document.getElementById('asset-category').value;
+            const subKey = document.getElementById('asset-subcategory').value;
+            const display = document.getElementById('asset-display');
+            display.innerHTML = "";
+
+            const assets = datasworn.assets[catKey].collections[subKey].contents;
+
+            for (const id in assets) {
+                const asset = assets[id];
+                const card = document.createElement('div');
+                card.className = 'asset-card';
+                
+                // Build abilities HTML
+                let abilitiesHTML = '';
+                asset.abilities.forEach((ability, index) => {
+                    abilitiesHTML += `
+                        <div class="ability">
+                            <div class="ability-text">
+                                <strong>[${index + 1}]</strong> ${ability.text.replace(/\n/g, '<br>')}
+                            </div>
+                        </div>`;
+                });
+
+                card.innerHTML = `
+                    <div class="asset-type">${catKey} / ${subKey}</div>
+                    <div class="asset-name">${asset.name}</div>
+                    ${asset.requirement ? `<div class="asset-requirement">${asset.requirement}</div>` : ''}
+                    ${abilitiesHTML}
+                    <button class="equip-btn" onclick="equipAsset('${id}', '${asset.name}')">ADD TO SHIP MANIFEST</button>
+                `;
+                display.appendChild(card);
+            }
         }
 
-        async function toggleEquip() {
-            const asset = filteredAssets[currentIndex];
-            const idx = ownedAssets.indexOf(asset.slug);
-
-            if (idx === -1) {
-                ownedAssets.push(asset.slug);
-                await saveStat(charId, "history_entry", `COMM-LOG: New Asset Acquired: ${asset.name}`);
-            } else {
-                ownedAssets.splice(idx, 1);
-                await saveStat(charId, "history_entry", `COMM-LOG: Asset Decommissioned: ${asset.name}`);
-            }
-
-            await saveStat(charId, "owned_assets", JSON.stringify(ownedAssets));
-            renderCard();
+        async function equipAsset(assetId, assetName) {
+            // Logging to the centralized history via Code.gs 
+            const logMsg = `ASSET ACQUIRED: ${assetName}`;
+            await saveStat(charId, "history_entry", logMsg);
+            
+            // Note: In the next module (asset-tracker), we will implement 
+            // the logic to add this ID to the 'assets' JSON array in the Sheet.
+            alert(`${assetName} logged to history. Open Asset Tracker to finalize installation.`);
         }
 
         init();
