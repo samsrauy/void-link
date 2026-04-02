@@ -47,7 +47,13 @@
         let datasworn = null;
 
         async function init() {
-            // Use the Global Header logic to fetch data
+            // Neural Link Guard: Wait for sync.js discovery
+            if (!GAS_URL) {
+                console.log("Compendium: Waiting for handshake...");
+                setTimeout(init, 1000);
+                return;
+            }
+
             datasworn = await DATASWORN_CONFIG.fetchData();
             if (datasworn) {
                 populateMoves();
@@ -112,11 +118,9 @@
             list.innerHTML = "";
             const cat = datasworn.oracles[catKey];
 
-            // Handle direct tables
             if (cat.contents) {
                 for (let k in cat.contents) list.add(new Option(cat.contents[k].name, `direct/0/${k}`));
             }
-            // Handle nested collections (e.g., Space > Planets)
             if (cat.collections) {
                 for (let ck in cat.collections) {
                     for (let tk in cat.collections[ck].contents) {
@@ -126,10 +130,10 @@
             }
         }
 
-        function rollOracle() {
+        async function rollOracle() {
             const catKey = document.getElementById('ora-cat').value;
             const path = document.getElementById('ora-list').value.split('/');
-            const type = path[0]; // 'direct' or 'sub'
+            const type = path[0];
             const subKey = path[1];
             const tableKey = path[2];
 
@@ -145,13 +149,11 @@
                 <div class="output-card">
                     <div style="color:var(--accent); font-weight:bold; font-size:1rem;">${result}</div>
                     <div style="font-size:0.6rem; opacity:0.5; margin-top:5px;">Roll: ${roll} | Source: ${table.name}</div>
-                    <button class="sync-btn" onclick="saveStat('${charId}', 'history_entry', 'ORACLE [${table.name}]: ${result}')">LOG TO HISTORY</button>
+                    <button class="sync-btn" onclick="saveStat(charId, 'history_entry', 'ORACLE [${table.name}]: ${result}')">LOG TO HISTORY</button>
                 </div>`;
         }
 
-        // --- NPC GENERATOR ---
-        function generateNPC() {
-            // Simplified helper to roll on specific tables
+        async function generateNPC() {
             const rollOn = (cat, sub, tab) => {
                 const table = datasworn.oracles[cat].collections[sub].contents[tab];
                 const r = Math.floor(Math.random() * 100) + 1;
@@ -160,12 +162,13 @@
             
             try {
                 const name = rollOn('characters', 'name', 'given');
-                const role = datasworn.oracles.characters.contents.role.rows[Math.floor(Math.random()*100)].text;
+                const roleTable = datasworn.oracles.characters.contents.role;
+                const role = DATASWORN_CONFIG.getResult(roleTable, Math.floor(Math.random() * 100) + 1).text;
                 
                 document.getElementById('npc-display').innerHTML = `
                     <div style="color:var(--accent); font-weight:bold;">${name}</div>
                     <div style="font-size:0.75rem; margin-bottom:10px;">${role}</div>
-                    <button class="sync-btn" onclick="saveStat('${charId}', 'history_entry', 'NPC GENERATED: ${name}, ${role}')">LOG ENCOUNTER</button>
+                    <button class="sync-btn" onclick="saveStat(charId, 'history_entry', 'NPC GENERATED: ${name}, ${role}')">LOG ENCOUNTER</button>
                 `;
             } catch (e) {
                 console.error("NPC Gen Error", e);
