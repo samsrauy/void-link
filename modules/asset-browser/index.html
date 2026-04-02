@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="../../css/style.css">
+    <style>
+        .browser-container { padding: 15px; max-width: 500px; margin: auto; }
+        
+        /* Filter Bar */
+        .filter-bar { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; border-bottom: 1px solid var(--border); }
+        .filter-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text); padding: 5px 12px; border-radius: 20px; font-size: 0.65rem; cursor: pointer; white-space: nowrap; }
+        .filter-btn.active { background: var(--accent); color: black; border-color: var(--accent); }
+
+        /* Carousel Area */
+        .carousel { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .nav-btn { background: none; border: 1px solid var(--border); color: white; cursor: pointer; padding: 10px; border-radius: 50%; width: 40px; height: 40px; }
+        
+        /* Card Preview */
+        .asset-preview { 
+            flex-grow: 1; border: 1px solid var(--border); border-radius: 8px; 
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(0,0,0,0.4) 100%);
+            padding: 20px; min-height: 350px; position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+        .a-type { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 2px; opacity: 0.5; }
+        .a-name { font-size: 1.4rem; color: var(--accent); font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+        .a-ability { font-size: 0.85rem; line-height: 1.4; margin-bottom: 12px; padding-left: 15px; position: relative; opacity: 0.8; }
+        .a-ability::before { content: "•"; position: absolute; left: 0; color: var(--accent); }
+        
+        .equip-btn { 
+            width: 100%; margin-top: 15px; padding: 10px; 
+            background: #4ade80; color: black; font-weight: bold; border: none; 
+            border-radius: 4px; cursor: pointer; text-transform: uppercase; font-size: 0.7rem;
+        }
+        .equip-btn.owned { background: none; border: 1px solid #4ade80; color: #4ade80; cursor: default; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <div class="browser-container">
+        <div id="filters" class="filter-bar">
+            <button class="filter-btn active" onclick="setCategory('all')">All</button>
+        </div>
+
+        <div class="carousel">
+            <button class="nav-btn" onclick="move(-1)">◀</button>
+            
+            <div id="asset-card" class="asset-preview">
+                <div id="card-content">Select a category to begin scanning...</div>
+            </div>
+
+            <button class="nav-btn" onclick="move(1)">▶</button>
+        </div>
+        
+        <div id="counter" style="text-align: center; font-size: 0.6rem; opacity: 0.4; margin-top: 10px;">0 / 0</div>
+    </div>
+
+    <script src="../../js/datasworn.js"></script>
+    <script src="../../js/sync.js"></script>
+    <script>
+        let allAssets = [];
+        let filteredAssets = [];
+        let currentIndex = 0;
+        let currentCategory = 'all';
+        let ownedAssets = [];
+
+        async function init() {
+            const game = new URLSearchParams(window.location.search).get('game') || 'starforged';
+            document.body.classList.add(`theme-${game}`);
+
+            // 1. Fetch Data
+            const data = await fetchDatasworn(game, 'assets.json');
+            
+            // 2. Flatten Assets for the carousel
+            for (let catKey in data.assets) {
+                const category = data.assets[catKey];
+                // Add filter button
+                createFilterBtn(category.name, catKey);
+                
+                for (let assetKey in category.assets) {
+                    let asset = category.assets[assetKey];
+                    asset.slug = assetKey;
+                    asset.catName = category.name;
+                    allAssets.push(asset);
+                }
+            }
+
+            // 3. Load Owned Assets from Sheet
+            const saved = await loadStats(charId);
+            ownedAssets = JSON.parse(saved.owned_assets || "[]");
+
+            filteredAssets = [...allAssets];
+            renderCard();
+        }
+
+        function createFilterBtn(name, key) {
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn';
+            btn.innerText = name;
+            btn.onclick = () => setCategory(key, btn);
+            document.getElementById('filters').appendChild(btn);
+        }
+
+        function setCategory(key, btn) {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            if(btn) btn.classList.add('active');
+            
+            currentCategory = key;
+            filteredAssets = (key === 'all') ? allAssets : allAssets.filter(a => a.asset_type.includes(key));
+            currentIndex = 0;
+            renderCard();
+        }
+
+        function move(dir) {
+            currentIndex += dir;
+            if (currentIndex < 0) currentIndex = filteredAssets.length - 1;
+            if (currentIndex >= filteredAssets.length) currentIndex = 0;
+            renderCard();
+        }
+
+        function renderCard() {
+            const asset = filteredAssets[currentIndex];
+            const container = document.getElementById('card-content');
+            const isOwned = ownedAssets.includes(asset.slug);
+
+            if (!asset) {
+                container.innerHTML = "No assets found.";
+                return;
+            }
+
+            let abilitiesHTML = asset.abilities.map(ab => `<div class="a-ability">${ab.text}</div>`).join('');
+            
+            container.innerHTML = `
+                <div class="a-type">${asset.catName}</div>
+                <div class="a-name">${asset.name}</div>
+                <div style="max-height: 200px; overflow-y: auto;">${abilitiesHTML}</div>
+                <button class="equip-btn ${isOwned ? 'owned' : ''}" onclick="equipAsset('${asset.slug}')">
+                    ${isOwned ? '✓ Currently Equipped' : 'Equip Asset (Spend XP)'}
+                </button>
+            `;
+
+            document.getElementById('counter').innerText = `${currentIndex + 1} / ${filteredAssets.length}`;
+        }
+
+        async function equipAsset(slug) {
+            if (ownedAssets.includes(slug)) return;
+            
+            ownedAssets.push(slug);
+            await saveStat(charId, "owned_assets", JSON.stringify(ownedAssets));
+            
+            // Log it
+            await saveStat(charId, "history_entry", `New Asset Acquired: ${slug.toUpperCase()}`);
+            
+            renderCard();
+            alert("Asset added to your database!");
+        }
+
+        init();
+    </script>
+</body>
+</html>
