@@ -4,19 +4,16 @@
     <meta charset="UTF-8">
     <link rel="stylesheet" href="../../css/style.css">
     <style>
-        body { background: #000; color: #00ff9d; font-family: 'Exo 2', sans-serif; overflow: hidden; margin: 0; }
+        body { background: #0b0d12; color: #00ff9d; font-family: 'Exo 2', sans-serif; overflow: hidden; margin: 0; }
         
-        /* Map Container */
         #navigation-deck { position: relative; width: 100vw; height: 100vh; background: radial-gradient(circle, #0a0a1a 0%, #000 100%); }
         
-        /* Hex Grid Overlay */
         #hex-grid { 
             position: absolute; width: 200%; height: 200%; 
             background-image: url('https://www.transparenttextures.com/patterns/carbon-fibre.png');
             opacity: 0.1; pointer-events: none;
         }
 
-        /* Region Header */
         .map-controls { 
             position: absolute; top: 10px; left: 10px; z-index: 100; 
             display: flex; gap: 10px; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #00ff9d44;
@@ -47,12 +44,24 @@
             display: flex; align-items: center; justify-content: center;
             transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
             z-index: 20; pointer-events: none;
+            opacity: 0; /* Hidden until initialized */
         }
+        #player-ship.active { opacity: 1; }
         #player-ship::after { content: '▲'; color: #ff0055; font-size: 12px; }
 
-        /* Sector Manifest (Sidebar) */
+        /* Status Message */
+        .status-overlay {
+            position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(255, 0, 85, 0.2); border: 1px solid #ff0055;
+            color: #ff0055; padding: 10px 20px; font-size: 0.7rem; 
+            text-transform: uppercase; letter-spacing: 2px; z-index: 100;
+            animation: blink 2s infinite;
+        }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        /* Sidebar */
         #manifest {
-            position: absolute; right: 0; top: 0; width: 200px; height: 100%;
+            position: absolute; right: 0; top: 0; width: 180px; height: 100%;
             background: rgba(0,0,0,0.9); border-left: 1px solid #00ff9d44;
             padding: 20px; font-size: 0.8rem; pointer-events: all;
         }
@@ -60,7 +69,7 @@
         .manifest-entry:hover { color: #fff; }
     </style>
 </head>
-<body>
+<body class="theme-starforged">
 
     <div id="navigation-deck">
         <div id="hex-grid"></div>
@@ -71,13 +80,12 @@
             <button class="region-btn" onclick="setRegion('Expanse', this)">EXPANSE</button>
         </div>
 
-        <div id="map-area">
-            </div>
-
+        <div id="map-area"></div>
         <div id="player-ship"></div>
+        <div id="status-msg" class="status-overlay">Initializing Nav-Link...</div>
 
         <div id="manifest">
-            <h3 style="font-size: 0.7rem; color: #888;">SECTOR MANIFEST</h3>
+            <h3 style="font-size: 0.7rem; color: #888; letter-spacing: 2px;">SECTOR MANIFEST</h3>
             <div id="manifest-list"></div>
         </div>
     </div>
@@ -85,27 +93,47 @@
     <script src="../../js/sync.js"></script>
     <script>
         let currentRegion = "Terminus";
-        
-        // Mock Data - In a full build, you'd roll these or pull from a JSON
+        let isInitialized = false;
+
         const SECTOR_DATA = {
             "Terminus": [
-                { id: 1, name: "Ironholde Station", x: 20, y: 30, type: "Orbital" },
-                { id: 2, name: "Vanguard Prime", x: 45, y: 60, type: "Planetary" },
-                { id: 3, name: "The Drift", x: 70, y: 20, type: "Derelict" }
+                { name: "Ironholde Station", x: 20, y: 30, type: "Orbital" },
+                { name: "Vanguard Prime", x: 45, y: 60, type: "Planetary" },
+                { name: "The Drift", x: 75, y: 25, type: "Derelict" }
             ],
             "Outlands": [
-                { id: 4, name: "Dust-7", x: 30, y: 50, type: "Settlement" }
+                { name: "Dust-7", x: 30, y: 50, type: "Settlement" },
+                { name: "Broken Anchor", x: 60, y: 80, type: "Outpost" }
             ],
             "Expanse": [
-                { id: 5, name: "Void-Reach", x: 80, y: 80, type: "Anomaly" }
+                { name: "Void-Reach", x: 80, y: 80, type: "Anomaly" },
+                { name: "Silence-4", x: 20, y: 15, type: "Ghost-Station" }
             ]
         };
 
         async function initMap() {
-            const stats = await getStats(charId);
-            const savedPos = stats.ship_pos || "20,30"; // Default to Ironholde
-            updateShipUI(savedPos.split(',')[0], savedPos.split(',')[1]);
-            renderRegion();
+            if (!charId) {
+                document.getElementById('status-msg').innerText = "ERROR: NO CHARACTER ID";
+                return;
+            }
+
+            try {
+                const stats = await getStats(charId);
+                const savedPos = stats.ship_pos;
+                
+                if (savedPos && savedPos !== "0,0") {
+                    const [x, y] = savedPos.split(',');
+                    updateShipUI(x, y);
+                    document.getElementById('status-msg').style.display = 'none';
+                    isInitialized = true;
+                } else {
+                    document.getElementById('status-msg').innerText = "Select Entry Vector";
+                }
+                renderRegion();
+            } catch (e) {
+                console.error("Map Load Error:", e);
+                document.getElementById('status-msg').innerText = "SIGNAL INTERRUPTED";
+            }
         }
 
         function setRegion(region, btn) {
@@ -122,38 +150,44 @@
             list.innerHTML = "";
 
             SECTOR_DATA[currentRegion].forEach(loc => {
-                // Add Dot to Map
                 const dot = document.createElement('div');
                 dot.className = 'waypoint';
                 dot.style.left = loc.x + "%";
                 dot.style.top = loc.y + "%";
-                dot.onclick = () => moveToLocation(loc);
+                dot.onclick = () => handleLocationClick(loc);
                 dot.innerHTML = `<div class="waypoint-label">${loc.name}</div>`;
                 mapArea.appendChild(dot);
 
-                // Add to Manifest
                 const entry = document.createElement('div');
                 entry.className = 'manifest-entry';
-                entry.innerHTML = `<strong>${loc.name}</strong><br><small>${loc.type}</small>`;
-                entry.onclick = () => moveToLocation(loc);
+                entry.innerHTML = `<strong>${loc.name}</strong><br><small style="color:#888">${loc.type}</small>`;
+                entry.onclick = () => handleLocationClick(loc);
                 list.appendChild(entry);
             });
         }
 
-        async function moveToLocation(loc) {
+        async function handleLocationClick(loc) {
+            if (!isInitialized) {
+                isInitialized = true;
+                document.getElementById('status-msg').style.display = 'none';
+                await saveStat(charId, "history_entry", `NAV: Entry vector confirmed at ${loc.name}`);
+            } else {
+                await saveStat(charId, "history_entry", `NAV: Relocating to ${loc.name}`);
+            }
+
             updateShipUI(loc.x, loc.y);
-            // Save to Google Sheet
             await saveStat(charId, "ship_pos", `${loc.x},${loc.y}`);
-            await saveStat(charId, "history_entry", `Nav-Comp: Arrived at ${loc.name}`);
         }
 
         function updateShipUI(x, y) {
             const ship = document.getElementById('player-ship');
+            ship.classList.add('active');
             ship.style.left = x + "%";
             ship.style.top = y + "%";
         }
 
-        initMap();
+        // Delay slightly to ensure charId is parsed from sync.js
+        setTimeout(initMap, 500);
     </script>
 </body>
 </html>
