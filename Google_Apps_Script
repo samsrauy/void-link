@@ -23,6 +23,16 @@
  */
 
 /**
+ * ==============================================================================
+ * PROJECT: Starforged Void-Link Sync
+ * INSTRUCTIONS: 
+ * 1. Replace the entire contents of your Apps Script editor with this code.
+ * 2. Set your GEMINI_KEY in Project Settings > Script Properties.
+ * 3. Deploy as a Web App (New Version) whenever you make changes.
+ * ==============================================================================
+ */
+
+/**
  * GET Request: Retrieves character data OR handles Oracle queries.
  */
 function doGet(e) {
@@ -39,9 +49,11 @@ function doGet(e) {
 
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     let sheet = ss.getSheetByName("Stats");
+    
+    // Auto-initialize Sheet if missing
     if (!sheet) {
       sheet = ss.insertSheet("Stats");
-      sheet.appendRow(["characterId", "health", "momentum", "spirit", "supply", "history", "journal"]);
+      sheet.appendRow(["characterId", "health", "momentum", "spirit", "supply", "history", "journal", "assets", "ship_pos"]);
     }
 
     const data = sheet.getDataRange().getValues();
@@ -52,7 +64,8 @@ function doGet(e) {
     if (row) {
       headers.forEach((header, index) => { result[header] = row[index]; });
     } else {
-      const newRow = [charId, 5, 2, 5, 5, "[]", ""];
+      // Create new character row with defaults
+      const newRow = [charId, 5, 2, 5, 5, "[]", "", "[]", "0,0"];
       sheet.appendRow(newRow);
       headers.forEach((header, index) => { result[header] = newRow[index] || 0; });
     }
@@ -65,7 +78,7 @@ function doGet(e) {
 }
 
 /**
- * POST Request: Updates stats or logs history.
+ * POST Request: Updates stats, appends journal entries, or saves assets.
  */
 function doPost(e) {
   try {
@@ -84,10 +97,25 @@ function doPost(e) {
       rowIndex = sheet.getLastRow() - 1;
     }
 
+    // CASE 1: History Logs (Rolling history of last 50 actions)
     if (statName === "history_entry") {
       return updateHistoryLog(sheet, rowIndex, value);
     }
+
+    // CASE 2: Journal Append (Adds text to end of current journal)
+    if (statName === "journal_append") {
+      let colIndex = headers.indexOf("journal");
+      if (colIndex === -1) {
+        colIndex = headers.length;
+        sheet.getRange(1, colIndex + 1).setValue("journal");
+      }
+      const cell = sheet.getRange(rowIndex + 1, colIndex + 1);
+      const currentJournal = cell.getValue() || "";
+      cell.setValue(currentJournal + value);
+      return ContentService.createTextOutput("Journal Updated").setMimeType(ContentService.MimeType.TEXT);
+    }
     
+    // CASE 3: Standard Update (Stats, Assets, Map Positions)
     let colIndex = headers.indexOf(statName);
     if (colIndex === -1) {
       colIndex = headers.length;
@@ -102,6 +130,9 @@ function doPost(e) {
   }
 }
 
+/**
+ * Helper to manage the JSON history log string
+ */
 function updateHistoryLog(sheet, rowIndex, newText) {
   const headers = sheet.getDataRange().getValues()[0];
   let colIndex = headers.indexOf("history");
@@ -111,41 +142,28 @@ function updateHistoryLog(sheet, rowIndex, newText) {
   }
   const cell = sheet.getRange(rowIndex + 1, colIndex + 1);
   let history = [];
-  try { history = JSON.parse(cell.getValue() || "[]"); } catch(e) { history = []; }
+  try { 
+    const val = cell.getValue();
+    history = val ? JSON.parse(val) : []; 
+  } catch(e) { history = []; }
+  
   const now = new Date();
   const timestamp = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
   history.push({ time: timestamp, text: newText });
-  if (history.length > 50) history.shift();
+  
+  if (history.length > 50) history.shift(); // Keep only last 50 entries
   cell.setValue(JSON.stringify(history));
   return ContentService.createTextOutput("Log Added").setMimeType(ContentService.MimeType.TEXT);
 }
 
 /**
- * Run this function manually in the Apps Script Editor 
- * to see what key is currently stored.
- */
-function checkMyKey() {
-  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY');
-  if (!key) {
-    console.error("❌ NO KEY FOUND: The 'GEMINI_KEY' property is empty.");
-  } else {
-    const hiddenKey = key.substring(0, 4) + "..." + key.substring(key.length - 4);
-    console.log("✅ KEY DETECTED: " + hiddenKey);
-    console.log("Length: " + key.length + " characters.");
-  }
-}
-
-/**
  * askSecretOracle: Communicates with Gemini API
- * Ensure GEMINI_KEY is set in Project Settings > Script Properties.
- * 
- * Targets the confirmed working Gemini 1.5 Flash model.
+ * Targets the Gemini 1.5 Flash model for speed.
  */
 function askSecretOracle(userPrompt) {
   const API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY'); 
   if (!API_KEY) return "VOID ERROR: NO KEY IN CORES.";
 
-  // We are using the v1 stable endpoint for speed and reliability
   const MODEL = "gemini-1.5-flash";
   const URL = `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent?key=${API_KEY}`;
 
@@ -157,7 +175,7 @@ function askSecretOracle(userPrompt) {
     }],
     "generationConfig": { 
       "temperature": 0.8, 
-      "maxOutputTokens": 100 // Reduced tokens for faster response
+      "maxOutputTokens": 100 
     }
   };
 
@@ -179,5 +197,18 @@ function askSecretOracle(userPrompt) {
     }
   } catch (e) { 
     return "SIGNAL LOST: SYSTEM CRASH."; 
+  }
+}
+
+/**
+ * Diagnostics: Run this to verify your API key is active.
+ */
+function checkMyKey() {
+  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY');
+  if (!key) {
+    console.error("❌ NO KEY FOUND in Script Properties.");
+  } else {
+    const hiddenKey = key.substring(0, 4) + "..." + key.substring(key.length - 4);
+    console.log("✅ KEY DETECTED: " + hiddenKey);
   }
 }
