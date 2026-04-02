@@ -91,11 +91,18 @@
         }
 
         function showPanel(id) {
+            // Hide all panels and dim all tabs
             document.querySelectorAll('.panel, .tab').forEach(el => el.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            event.currentTarget.classList.add('active');
+    
+           // Show the selected panel
+           document.getElementById(id).classList.add('active');
+    
+           // Highlight the clicked tab
+           if (event) {
+               event.currentTarget.classList.add('active');
+           }
         }
-
+        
         /* --- MOVES LOGIC --- */
         function loadMoves() {
             const cat = document.getElementById('move-cat').value;
