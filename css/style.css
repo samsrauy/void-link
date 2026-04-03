@@ -1,76 +1,140 @@
-/* Shared Layout Styles */
-body {
+/* VOID-LINK GLOBAL DESIGN SYSTEM 
+    This file governs the entire terminal. 
+    Use variables to ensure "Starforged" vs "Ironsworn" themes work instantly.
+*/
+
+:root {
+    /* DEFAULT THEME (STARFORGED NEON) */
+    --bg-void: #050508;
+    --bg-panel: #0b0d12;
+    --bg-input: #161922;
+    --accent: #00ff9d;       /* Neon Green */
+    --accent-dim: rgba(0, 255, 157, 0.15);
+    --text-main: #bcdee7;
+    --text-dim: #454d5d;
+    --critical: #ff0055;
+    --border: #1a1c23;
+    --font-header: 'Share Tech Mono', monospace;
+    --font-body: 'Exo 2', sans-serif;
+}
+
+/* --- RESET & BASE --- */
+* { box-sizing: border-box; }
+
+body, html {
     margin: 0;
-    padding: 15px;
-    font-family: 'Exo 2', 'Segoe UI', sans-serif;
-    background-color: var(--bg);
-    color: var(--text);
-    transition: background-color 0.3s, color 0.3s;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-void);
+    color: var(--text-main);
+    font-family: var(--font-body);
+    overflow: hidden; /* Prevents double scrollbars on the main terminal */
 }
 
-/* --- STARFORGED THEME --- */
-.theme-starforged {
-    --bg: #0b0d12;
-    --border: #454d5d;
-    --accent: #cd5a29; /* Orange */
-    --text: #e2e4e9;
+/* --- THE TERMINAL SHELL (void-link-term.html) --- */
+#terminal-grid {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    grid-template-rows: 60px 1fr 300px;
+    height: 100vh;
+    gap: 2px;
+    background: var(--border);
 }
 
-/* --- IRONSWORN THEME --- */
-.theme-ironsworn {
-    --bg: #1a1a1a;
-    --border: #666;
-    --accent: #999; /* Iron/Stone Gray */
-    --text: #f0f0f0;
+.header-bar {
+    grid-column: 1 / -1;
+    background: var(--bg-panel);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--accent);
 }
 
-/* Elements using the variables */
+.module-frame {
+    background: var(--bg-panel);
+    overflow-y: auto;
+    position: relative;
+    border: 1px solid transparent;
+}
+
+/* --- GLOBAL UI COMPONENTS (Used by all modules) --- */
+
+/* Buttons */
 button {
     background: transparent;
     border: 1px solid var(--accent);
     color: var(--accent);
     padding: 8px 16px;
+    font-family: var(--font-header);
     text-transform: uppercase;
-    font-weight: bold;
+    font-size: 0.75rem;
     cursor: pointer;
+    transition: 0.2s;
 }
 
 button:hover {
-    background: var(--accent);
-    color: #fff;
+    background: var(--accent-dim);
+    box-shadow: 0 0 10px var(--accent-dim);
 }
 
-select {
-    background: #222;
-    color: var(--text);
-    border: 1px solid var(--border);
-    padding: 5px;
+button:disabled {
+    border-color: var(--text-dim);
+    color: var(--text-dim);
+    cursor: not-allowed;
 }
 
-.result-text {
+/* Inputs & Selects */
+input[type="text"], textarea, select {
+    background: var(--bg-input);
+    border: 1px solid var(--text-dim);
+    color: var(--accent);
+    padding: 10px;
+    font-family: var(--font-header);
+    outline: none;
+}
+
+input:focus, textarea:focus {
+    border-color: var(--accent);
+}
+
+/* --- MODULE SPECIFIC SCOPING (Prevents Bleeding) --- */
+
+/* Character Sheet Scoping */
+#sheet-scope .stat-val {
+    font-size: 2rem;
+    color: var(--accent);
+}
+
+/* Map Scoping */
+#map-scope .poi-token {
+    position: absolute;
+    cursor: pointer;
+    filter: drop-shadow(0 0 5px var(--accent));
+}
+
+/* Journal Scoping */
+#journal-scope textarea {
+    width: 100%;
+    min-height: 200px;
     border-left: 3px solid var(--accent);
-    padding-left: 10px;
 }
 
-/* --- TERMINAL LAYOUT (Makes void-link-term.html work) --- */
-#terminal-grid {
-    display: grid;
-    grid-template-columns: 350px 1fr 400px;
-    grid-template-rows: 60px 1fr;
-    height: 100vh;
-    gap: 2px;
-    background: #1a1c23;
-}
-.header-bar { 
-    grid-column: 1 / -1; background: #0b0d12; 
-    display: flex; justify-content: space-between; align-items: center; 
-    padding: 0 20px; border-bottom: 1px solid #00ff9d;
-}
-.module-frame { background: #050508; border: none; width: 100%; height: 100%; }
+/* --- SCROLLBAR CUSTOMIZATION --- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-void); }
+::-webkit-scrollbar-thumb { background: var(--text-dim); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-#asset-drawer {
-    position: fixed; top: 0; right: -450px; width: 450px; height: 100%;
-    background: #0b0d12; border-left: 1px solid #00ff9d;
-    transition: right 0.3s ease; z-index: 100;
+/* --- ANIMATIONS --- */
+@keyframes pulse-neon {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
 }
-#asset-drawer.open { right: 0; }
+
+.online-status {
+    color: var(--accent);
+    animation: pulse-neon 2s infinite;
+}
