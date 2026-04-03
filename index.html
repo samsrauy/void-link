@@ -7,22 +7,17 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; background: #050508; color: #00ff9d; font-family: 'Exo 2', sans-serif; overflow: hidden; }
         
-        /* Login Screen */
+        /* Setup Screen */
         #setup-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: radial-gradient(circle, #0a0a1a 0%, #000 100%); }
         .setup-box { background: rgba(0, 255, 153, 0.05); border: 1px solid #00ff9d; padding: 40px; border-radius: 8px; text-align: center; box-shadow: 0 0 20px rgba(0, 255, 153, 0.1); width: 400px; }
-        
         .input-group { margin-bottom: 20px; text-align: left; }
         label { display: block; font-size: 0.6rem; letter-spacing: 2px; margin-bottom: 5px; opacity: 0.7; }
-        
-        input { background: #000; border: 1px solid #454d5d; color: #00ff9d; padding: 12px; width: 100%; font-family: 'Share Tech Mono', monospace; outline: none; box-sizing: border-box; transition: 0.3s; }
-        input:focus { border-color: #00ff9d; box-shadow: 0 0 10px rgba(0, 255, 153, 0.2); }
+        input { background: #000; border: 1px solid #454d5d; color: #00ff9d; padding: 12px; width: 100%; font-family: 'Share Tech Mono', monospace; outline: none; box-sizing: border-box; }
 
-        .boot-btn { width: 100%; background: #00ff9d; color: #000; border: none; padding: 15px; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; margin-top: 10px; transition: 0.2s; }
-        .boot-btn:hover { background: #fff; transform: scale(1.02); }
+        .boot-btn { width: 100%; background: #00ff9d; color: #000; border: none; padding: 15px; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; margin-top: 10px; }
+        .boot-btn:hover { background: #fff; }
 
-        .note { font-size: 0.65rem; color: #bcdee7; opacity: 0.6; line-height: 1.4; margin-top: 20px; text-align: center; font-style: italic; }
-
-        /* Main Dashboard Grid */
+        /* Dashboard Layout */
         #dashboard { 
             display: none; 
             grid-template-columns: 380px 1fr 380px; 
@@ -37,12 +32,10 @@
         .grid-assets { grid-column: 3; grid-row: 1; }
         .grid-compendium { grid-column: 3; grid-row: 2; }
 
-        /* Slide-out Library (Asset Browser) */
         #menu-toggle {
             position: fixed; bottom: 20px; left: 20px; z-index: 100;
             background: #00ff9d; color: #000; border: none; padding: 10px 20px;
-            font-weight: bold; cursor: pointer; border-radius: 4px; box-shadow: 0 0 15px rgba(0,255,153,0.4);
-            letter-spacing: 1px; font-size: 0.7rem; display: none;
+            font-weight: bold; cursor: pointer; border-radius: 4px; display: none;
         }
         #side-menu {
             position: fixed; top: 0; left: -550px; width: 500px; height: 100vh;
@@ -56,30 +49,24 @@
 
     <div id="setup-screen">
         <div class="setup-box">
-            <h1 style="letter-spacing: 8px; margin: 0;">VOID-LINK</h1>
-            <p style="font-size: 0.6rem; opacity: 0.4; margin-bottom: 40px; letter-spacing: 1px;">NEURAL INTERFACE TERMINAL // v4.0</p>
+            <h1>VOID-LINK</h1>
+            <p style="font-size: 0.6rem; opacity: 0.4; margin-bottom: 40px;">NEURAL INTERFACE TERMINAL // v5.0</p>
             
             <div class="input-group">
-                <label>DATA UPLINK (SPREADSHEET ID)</label>
-                <input type="text" id="sheet-input" placeholder="e.g. 1aBcDeFgHiJkLmNoP..." autocomplete="off">
+                <label>DATA UPLINK (SHEET ID)</label>
+                <input type="text" id="sheet-input" placeholder="Enter Google Sheet ID..." autocomplete="off">
             </div>
 
             <div class="input-group">
                 <label>IDENTITY (CHARACTER NAME)</label>
-                <input type="text" id="name-input" placeholder="ENTER NAME..." autocomplete="off">
+                <input type="text" id="name-input" placeholder="Enter Character Name..." autocomplete="off">
             </div>
 
             <button class="boot-btn" onclick="establishLink()">Establish Connection</button>
-            
-            <p class="note">
-                NOTE: If the character name does not exist in the system, <br>
-                a new identity will be automatically initialized upon connection.
-            </p>
         </div>
     </div>
 
     <button id="menu-toggle" onclick="toggleMenu()">☰ ASSET REPOSITORY</button>
-
     <div id="side-menu">
         <iframe id="frame-asset-browser" style="border:none;"></iframe>
     </div>
@@ -97,46 +84,43 @@
         const sheetId = params.get('sheet');
         const charName = params.get('id');
 
+        /**
+         * Initializes iframes with localized paths based on your repo tree.
+         */
         function init() {
             if (sheetId && charName) {
-                // Hide Setup, Show Dashboard
                 document.getElementById('setup-screen').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'grid';
                 document.getElementById('menu-toggle').style.display = 'block';
 
                 const query = `?sheet=${sheetId}&id=${encodeURIComponent(charName)}`;
                 
-                // Load all frames
-                document.getElementById('frame-char').src = `modules/character-sheet/index.html${query}`;
-                document.getElementById('frame-map').src = `modules/map/index.html${query}`;
-                document.getElementById('frame-journal').src = `modules/journal/index.html${query}`;
-                document.getElementById('frame-tracker').src = `modules/asset-tracker/index.html${query}`;
-                document.getElementById('frame-compendium').src = `modules/compendium/index.html${query}`;
-                
-                // Load the slide-out asset browser
-                document.getElementById('frame-asset-browser').src = `modules/asset-browser/index.html${query}`;
+                // Updated paths to match: modules/[folder]/[file].html 
+                document.getElementById('frame-char').src = `modules/character-sheet/character-sheet.html${query}`;
+                document.getElementById('frame-map').src = `modules/map/map.html${query}`;
+                document.getElementById('frame-journal').src = `modules/journal/journal.html${query}`;
+                document.getElementById('frame-tracker').src = `modules/asset-tracker/asset-tracker.html${query}`;
+                document.getElementById('frame-compendium').src = `modules/compendium/compendium.html${query}`;
+                document.getElementById('frame-asset-browser').src = `modules/asset-browser/asset-browser.html${query}`;
+            }
+        }
+
+        function establishLink() {
+            const sId = document.getElementById('sheet-input').value.trim();
+            const cName = document.getElementById('name-input').value.trim();
+            if (sId && cName) {
+                window.location.href = `index.html?sheet=${sId}&id=${encodeURIComponent(cName)}`;
+            } else {
+                alert("TERMINAL ERROR: Credentials missing.");
             }
         }
 
         function toggleMenu() {
             const menu = document.getElementById('side-menu');
             menu.classList.toggle('open');
-            document.getElementById('menu-toggle').innerText = menu.classList.contains('open') ? '✕ DISCONNECT' : '☰ ASSET REPOSITORY';
+            document.getElementById('menu-toggle').innerText = menu.classList.contains('open') ? '✕ CLOSE' : '☰ ASSET REPOSITORY';
         }
 
-        function establishLink() {
-            const sId = document.getElementById('sheet-input').value.trim();
-            const cName = document.getElementById('name-input').value.trim();
-            
-            if (sId && cName) {
-                // Standardizing the redirect to use URL params for GH Pages
-                window.location.href = `index.html?sheet=${sId}&id=${encodeURIComponent(cName)}`;
-            } else {
-                alert("TERMINAL ERROR: Required credentials missing.");
-            }
-        }
-
-        // Initialize on load
         init();
     </script>
 </body>
