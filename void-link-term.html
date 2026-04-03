@@ -1,118 +1,26 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>STARFORGED // NAV-OS TERMINAL</title>
-    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <style>
-        :root { --neon-green: #00ff9d; --deep-bg: #050508; --panel-bg: #0b0d12; --border-dim: #1a1c23; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--deep-bg); color: var(--neon-green); font-family: 'Exo 2', sans-serif; overflow: hidden; }
-        
-        #terminal-grid { display: grid; grid-template-columns: 350px 1fr; grid-template-rows: 60px 1fr 300px; height: 100vh; gap: 2px; background: var(--border-dim); }
-        .header-bar { grid-column: 1 / -1; background: var(--panel-bg); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--neon-green); }
-        
-        /* Module Containers (Injection Points) */
-        .module-frame { background: var(--panel-bg); overflow-y: auto; position: relative; }
-        #frame-char { grid-column: 1; grid-row: 2 / 4; border-right: 1px solid var(--border-dim); }
-        #frame-map { grid-column: 2; grid-row: 2; }
-        #frame-journal { grid-column: 2; grid-row: 3; border-top: 1px solid var(--border-dim); }
-
-        #asset-drawer { 
-            position: fixed; right: -80%; top: 0; width: 70%; height: 100%; 
-            background: var(--panel-bg); border-left: 2px solid var(--neon-green); 
-            transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; box-shadow: -10px 0 30px rgba(0,0,0,0.8);
-        }
-        #asset-drawer.open { right: 0; }
-        
-        .nav-btn { background: transparent; border: 1px solid var(--neon-green); color: var(--neon-green); padding: 5px 15px; cursor: pointer; font-family: 'Share Tech Mono'; }
-        .nav-btn:hover { background: var(--neon-green); color: #000; }
-    </style>
-</head>
-<body>
-
-<div id="terminal-grid">
-    <div class="header-bar">
-        <h2 style="margin:0; font-family: 'Share Tech Mono'; letter-spacing: 2px;">NAV-OS // STARFORGED</h2>
-        <div id="char-display" style="font-family: 'Share Tech Mono'; color: #bcdee7;">PILOT: AWAITING UPLINK...</div>
-        <div>
-            <button class="nav-btn" onclick="toggleAssets()">MANIFEST</button>
-            <button class="nav-btn" onclick="loadModule('frame-map', 'compendium/compendium.html')">DATABASE</button>
-        </div>
-    </div>
+async function loadModule(id, path) {
+    const target = document.getElementById(id);
+    const GITHUB_BASE = "https://samsrauy.github.io/void-link/modules/";
     
-    <div id="frame-char" class="module-frame"></div>
-    <div id="frame-map" class="module-frame"></div>
-    <div id="frame-journal" class="module-frame"></div>
-</div>
+    // Force the path to be absolute to GitHub
+    // If the path is just 'map/map.html', it becomes 'https://.../modules/map/map.html'
+    const fullPath = path.startsWith('http') ? path : GITHUB_BASE + path;
 
-<div id="asset-drawer">
-    <div style="padding: 10px; background: #1a1c23; display: flex; justify-content: space-between;">
-        <span style="font-weight: bold;">ASSET REPOSITORY</span>
-        <button onclick="toggleAssets()" style="color: #ff0055; border: none; background: transparent; cursor: pointer;">[CLOSE]</button>
-    </div>
-    <div id="frame-assets" class="module-frame" style="height: calc(100% - 40px);"></div>
-</div>
-
-<script src="js/datasworn.js"></script>
-<script src="js/sync.js"></script>
-
-<script>
-    /**
-     * MODULE INJECTION ENGINE
-     * Fetches HTML fragments, injects them, and re-executes scripts.
-     */
-    async function loadModule(targetId, path) {
-        const target = document.getElementById(targetId);
-        target.innerHTML = `<div style="padding:20px; font-family:'Share Tech Mono';">INITIATING UPLINK: ${path}...</div>`;
+    try {
+        const response = await fetch(fullPath);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const html = await response.text();
         
-        try {
-            // Ensure path is correct for your GitHub Pages structure
-            const response = await fetch(`modules/${path}`);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            const html = await response.text();
-            
-            target.innerHTML = html;
-            
-            // Execute any scripts found in the injected HTML
-            const scripts = target.querySelectorAll('script');
-            scripts.forEach(oldScript => {
-                const newScript = document.createElement('script');
-                if (oldScript.src) {
-                    newScript.src = oldScript.src;
-                } else {
-                    newScript.textContent = oldScript.textContent;
-                }
-                document.body.appendChild(newScript);
-                // oldScript.remove(); // Keep clean
-            });
-        } catch (err) {
-            console.error(`Injection Error (${path}):`, err);
-            target.innerHTML = `<div style="color:#ff0055; padding:20px;">LINK SEVERED: Check console for path errors.</div>`;
-        }
+        target.innerHTML = html;
+
+        // Execute scripts inside the module
+        target.querySelectorAll('script').forEach(oldScript => {
+            const newScript = document.createElement('script');
+            newScript.textContent = oldScript.textContent;
+            document.body.appendChild(newScript);
+        });
+    } catch (err) {
+        console.error(`Injection Error (${fullPath}):`, err);
+        target.innerHTML = `<div style="color:#ff0055; padding:20px;">LINK SEVERED: Check console for 404.</div>`;
     }
-
-    function toggleAssets() {
-        const drawer = document.getElementById('asset-drawer');
-        drawer.classList.toggle('open');
-        if (drawer.classList.contains('open') && !drawer.dataset.loaded) {
-            loadModule('frame-assets', 'asset-browser/asset-browser.html');
-            drawer.dataset.loaded = "true";
-        }
-    }
-
-    // Main Boot Sequence
-    async function bootTerminal() {
-        // window.charId is established in sync.js
-        document.getElementById('char-display').innerText = `PILOT: ${window.charId.toUpperCase()}`;
-
-        // Load primary UI fragments
-        await loadModule('frame-char', 'character-sheet/character-sheet.html');
-        await loadModule('frame-map', 'map/map.html');
-        await loadModule('frame-journal', 'journal/journal.html');
-    }
-
-    // Start terminal
-    window.addEventListener('load', bootTerminal);
-</script>
-</body>
-</html>
+}
