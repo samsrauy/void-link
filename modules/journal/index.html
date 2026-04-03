@@ -6,20 +6,20 @@
     <style>
         body { background: #0b0d12; color: #e2e4e9; padding: 15px; font-family: 'Exo 2', sans-serif; display: flex; flex-direction: column; height: 90vh; }
         .journal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .status-light { width: 8px; height: 8px; border-radius: 50%; background: #444; display: inline-block; margin-right: 5px; }
-        .status-active { background: var(--accent); box-shadow: 0 0 5px var(--accent); }
+        .status-light { width: 8px; height: 8px; border-radius: 50%; background: #444; display: inline-block; margin-right: 5px; transition: 0.5s; }
+        .status-active { background: #00ff9d; box-shadow: 0 0 8px #00ff9d; }
         
         textarea { 
             flex-grow: 1; background: #161922; color: #bcdee7; border: 1px solid #454d5d; 
             padding: 15px; font-family: 'Share Tech Mono', monospace; font-size: 0.9rem; 
-            line-height: 1.5; outline: none; resize: none; border-radius: 4px;
+            line-height: 1.5; outline: none; resize: none; border-radius: 4px; transition: 0.3s;
         }
-        textarea:focus { border-color: var(--accent); }
+        textarea:focus { border-color: #00ff9d; background: #1a1c23; }
         
         .controls { margin-top: 10px; display: flex; gap: 10px; }
-        .save-btn { background: var(--accent); color: #000; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; flex-grow: 1; text-transform: uppercase; letter-spacing: 1px; }
-        .save-btn:hover { filter: brightness(1.2); }
-        .save-btn:disabled { background: #444; cursor: not-allowed; }
+        .save-btn { background: #00ff9d; color: #000; border: none; padding: 10px 20px; font-weight: bold; cursor: pointer; flex-grow: 1; text-transform: uppercase; letter-spacing: 1px; transition: 0.2s; }
+        .save-btn:hover { background: #fff; transform: scale(1.01); }
+        .save-btn:disabled { background: #444; cursor: not-allowed; opacity: 0.5; }
     </style>
 </head>
 <body class="theme-starforged">
@@ -28,7 +28,7 @@
             <span id="sync-indicator" class="status-light"></span> 
             ENCRYPTED LOG CHANNEL
         </div>
-        <div id="last-saved" style="font-size: 0.6rem; opacity: 0.5;">Awaiting Link...</div>
+        <div id="last-saved" style="font-size: 0.6rem; opacity: 0.5;">AWAITING LINK...</div>
     </div>
 
     <textarea id="journal-input" placeholder="Begin transmission..."></textarea>
@@ -45,53 +45,61 @@
         const timestamp = document.getElementById('last-saved');
 
         async function initJournal() {
-            // Neural Link Guard: Wait for sync.js discovery
-            if (!GAS_URL) {
-                console.log("Journal: Establishing uplink...");
-                setTimeout(initJournal, 1000);
+            // THE NEURAL GUARD: Wait for sync.js to provide GAS_URL and loadStats
+            if (typeof GAS_URL === 'undefined' || typeof loadStats !== 'function') {
+                console.log("Journal: Sync Engine not yet detected. Retrying...");
+                setTimeout(initJournal, 500);
                 return;
             }
 
+            // Link confirmed
             indicator.classList.add('status-active');
+            timestamp.innerText = "LINK ESTABLISHED";
             
-            // Load existing notes from the 'journal' column in the Sheet
-            const stats = await loadStats(charId);
-            if (stats && stats.journal) {
-                textarea.value = stats.journal;
-                timestamp.innerText = "LOCAL CACHE LOADED";
-            } else {
-                timestamp.innerText = "NEW LOG INITIALIZED";
+            try {
+                const stats = await loadStats(charId);
+                if (stats && stats.journal) {
+                    textarea.value = stats.journal;
+                    timestamp.innerText = "DATA CORE SYNCHRONIZED";
+                } else {
+                    timestamp.innerText = "NEW LOG INITIALIZED";
+                }
+            } catch (err) {
+                timestamp.innerText = "SYNC ERROR";
+                console.error("Journal Init Error:", err);
             }
         }
 
         async function manualSave() {
-            if (!GAS_URL) return;
+            if (typeof saveStat !== 'function') return;
             
             saveBtn.disabled = true;
+            const originalLabel = saveBtn.innerText;
             saveBtn.innerText = "UPLOADING...";
             
-            const content = textarea.value;
-            
-            // Primary save to the journal column
-            await saveStat(charId, "journal", content);
-            
-            // Unified history update
-            await saveStat(charId, "history_entry", "LOG: Archive entry committed.");
+            try {
+                const content = textarea.value;
+                await saveStat(charId, "journal", content);
+                await saveStat(charId, "history_entry", "LOG: Archive entry committed.");
 
-            const now = new Date();
-            timestamp.innerText = "LAST SYNC: " + now.toLocaleTimeString();
-            saveBtn.disabled = false;
-            saveBtn.innerText = "Commit to Archive";
+                const now = new Date();
+                timestamp.innerText = "LAST SYNC: " + now.toLocaleTimeString();
+            } catch (err) {
+                timestamp.innerText = "SAVE FAILED";
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerText = originalLabel;
+            }
         }
 
-        // Auto-save: Every 5 minutes if content has changed
+        // Auto-save logic (every 30s)
         let lastValue = "";
         setInterval(() => {
-            if (textarea.value !== lastValue && textarea.value !== "") {
+            if (textarea.value !== lastValue && textarea.value.trim() !== "") {
                 lastValue = textarea.value;
                 manualSave();
             }
-        }, 300000); 
+        }, 30000);
 
         initJournal();
     </script>
