@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>STARFORGED // VOID-LINK TERMINAL</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; background: #050508; color: #00ff9d; font-family: 'Exo 2', sans-serif; overflow: hidden; }
+        
+        #terminal-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr 400px;
+            grid-template-rows: 60px 1fr;
+            height: 100vh;
+            gap: 2px;
+            background: #1a1c23;
+        }
+
+        .header-bar { 
+            grid-column: 1 / -1; background: #0b0d12; 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 0 20px; border-bottom: 1px solid #00ff9d;
+        }
+
+        .module-frame { background: #050508; border: none; width: 100%; height: 100%; }
+
+        #asset-drawer {
+            position: fixed; top: 0; right: -450px; width: 450px; height: 100%;
+            background: #0b0d12; border-left: 2px solid #00ff9d;
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+        }
+        #asset-drawer.open { right: 0; }
+
+        .btn-hex {
+            background: rgba(0, 255, 153, 0.1); border: 1px solid #00ff9d;
+            color: #00ff9d; padding: 5px 15px; cursor: pointer; font-family: 'Share Tech Mono';
+        }
+    </style>
+</head>
+<body>
+
+    <div id="terminal-grid">
+        <header class="header-bar">
+            <div>
+                <span style="letter-spacing: 3px; font-weight: bold;">VOID-LINK // TERMINAL</span>
+                <span id="char-display" style="color: #ff0055; margin-left: 15px;">[ LINKING... ]</span>
+            </div>
+            <nav>
+                <button class="btn-hex" onclick="toggleAssets()">📂 ASSET REPOSITORY</button>
+            </nav>
+        </header>
+
+        <section>
+            <iframe id="frame-char" class="module-frame"></iframe>
+        </section>
+
+        <section>
+            <iframe id="frame-map" class="module-frame"></iframe>
+        </section>
+
+        <section>
+            <iframe id="frame-journal" class="module-frame"></iframe>
+        </section>
+    </div>
+
+    <div id="asset-drawer">
+        <div style="padding: 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #1a1c23;">
+            <span style="font-family: 'Share Tech Mono';">NEURAL ASSET LINK</span>
+            <button class="btn-hex" onclick="toggleAssets()">CLOSE [X]</button>
+        </div>
+        <iframe id="frame-assets" class="module-frame" style="height: calc(100% - 70px);"></iframe>
+    </div>
+
+    <script>
+        /**
+         * THE NEURAL BRIDGE
+         * Index.html (Google) defines 'charId'. We must grab it and pass it to all modules.
+         */
+        const charId = window.charId || new URLSearchParams(window.location.search).get('id');
+
+        function bootTerminal() {
+            if (!charId) {
+                console.error("Critical Failure: No Character ID found.");
+                document.body.innerHTML = "<div style='color:red; padding:20px;'>FATAL ERROR: CHARACTER ID MISSING. ACCESS DENIED.</div>";
+                return;
+            }
+
+            document.getElementById('char-display').innerText = `ID: ${charId.toUpperCase()}`;
+
+            // Inject URLs into Iframes with the ID parameter to maintain the sync session
+            const query = `?id=${encodeURIComponent(charId)}`;
+            
+            document.getElementById('frame-char').src = `modules/character-sheet/character-sheet.html${query}`;
+            document.getElementById('frame-map').src = `modules/map/map.html${query}`;
+            document.getElementById('frame-journal').src = `modules/journal/journal.html${query}`;
+            document.getElementById('frame-assets').src = `modules/asset-browser/asset-browser.html${query}`;
+        }
+
+        function toggleAssets() {
+            document.getElementById('asset-drawer').classList.toggle('open');
+        }
+
+        // Initialize system
+        window.onload = bootTerminal;
+    </script>
+</body>
+</html>
