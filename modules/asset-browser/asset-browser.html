@@ -1,148 +1,122 @@
-<style>
-    #asset-browser-container { background: #0b0d12; color: #00ff9d; font-family: 'Exo 2', sans-serif; padding: 20px; }
-    #asset-browser-container .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #1a1c23; padding-bottom: 10px; }
-    
-    #asset-browser-container select { 
-        background: #161922; border: 1px solid #454d5d; color: #00ff9d; 
-        padding: 8px; border-radius: 4px; outline: none; cursor: pointer; 
-        text-transform: uppercase; font-family: 'Share Tech Mono', monospace; 
-    }
+<div id="asset-scope">
+    <style>
+        #asset-scope { 
+            background: #0b0d12; color: #00ff9d; font-family: 'Exo 2', sans-serif; 
+            padding: 20px; height: 100%; display: flex; flex-direction: column;
+        }
+        #asset-scope .header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-bottom: 20px; border-bottom: 1px solid #1a1c23; padding-bottom: 10px; 
+        }
+        #asset-scope select { 
+            background: #161922; border: 1px solid #454d5d; color: #00ff9d; 
+            padding: 8px; border-radius: 4px; outline: none; cursor: pointer; 
+            text-transform: uppercase; font-family: 'Share Tech Mono'; 
+        }
+        #asset-scope .asset-grid { 
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
+            gap: 20px; overflow-y: auto; flex-grow: 1; padding-right: 10px;
+        }
+        #asset-scope .asset-card { 
+            background: #1a1c23; border: 1px solid #454d5d; border-radius: 8px; 
+            padding: 15px; display: flex; flex-direction: column; min-height: 350px;
+            position: relative; border-top: 3px solid #00ff9d;
+        }
+        #asset-scope .asset-type { font-size: 0.6rem; color: #ff0055; text-transform: uppercase; letter-spacing: 1px; }
+        #asset-scope .asset-name { font-size: 1.1rem; margin: 5px 0; color: #bcdee7; font-family: 'Share Tech Mono'; }
+        #asset-scope .ability { font-size: 0.85rem; margin-bottom: 10px; line-height: 1.4; color: #aab; }
+        #asset-scope .install-btn { 
+            width: 100%; background: #00ff9d; color: #000; border: none; 
+            padding: 12px; font-weight: bold; cursor: pointer; margin-top: auto;
+            font-family: 'Share Tech Mono'; transition: 0.2s;
+        }
+        #asset-scope .install-btn:hover { background: #fff; }
+        #asset-scope .install-btn:disabled { background: #454d5d; color: #1a1c23; cursor: not-allowed; }
+    </style>
 
-    #asset-browser-container .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-    
-    #asset-browser-container .asset-card { 
-        background: #1a1c23; border: 1px solid #454d5d; border-radius: 8px; 
-        padding: 15px; display: flex; flex-direction: column; min-height: 380px; transition: 0.3s; 
-    }
-    #asset-browser-container .asset-card:hover { border-color: #00ff9d; transform: translateY(-2px); }
-    #asset-browser-container .asset-card h4 { margin: 0 0 10px 0; color: #00ff9d; text-transform: uppercase; letter-spacing: 1px; font-size: 1.1rem; }
-    
-    #asset-browser-container .asset-type { font-size: 0.6rem; color: #ff0055; margin-bottom: 10px; font-weight: bold; letter-spacing: 2px; }
-    #asset-browser-container .ability { font-size: 0.85rem; color: #bcdee7; margin-bottom: 12px; line-height: 1.4; }
-    
-    #asset-browser-container .inline-link { 
-        background: rgba(0, 255, 153, 0.1); border: none; border-bottom: 1px dashed #00ff9d; 
-        color: #00ff9d; padding: 0 2px; cursor: pointer; font-family: inherit; font-size: inherit; 
-    }
-
-    #asset-browser-container .install-btn { 
-        width: 100%; background: #00ff9d; color: #000; border: none; padding: 12px; 
-        font-weight: bold; cursor: pointer; margin-top: auto; text-transform: uppercase; letter-spacing: 1px; 
-    }
-    #asset-browser-container .install-btn:disabled { background: #444; cursor: not-allowed; color: #888; }
-</style>
-
-<div id="asset-browser-container">
-    <div id="asset-status-msg" style="font-size: 0.6rem; color: #454d5d; text-transform: uppercase; margin-bottom: 10px;">ACCESSING ENCRYPTED REPOSITORY...</div>
     <div class="header">
-        <h3 style="margin:0; letter-spacing:2px;">NEURAL ASSET REPOSITORY</h3>
-        <select id="category-select" onchange="handleCategoryChange(this.value)">
-            <option>UPLINKING...</option>
-        </select>
+        <div>
+            <h3 style="margin:0;">ASSET REPOSITORY</h3>
+            <span id="status-msg" style="font-size: 0.6rem; color: #454d5d;">NEURAL LINK STABLE</span>
+        </div>
+        <select id="category-select" onchange="renderAssets(this.value)"></select>
     </div>
-    <div id="asset-grid" class="asset-grid"></div>
+
+    <div id="asset-grid" class="asset-grid">
+        <div style="padding: 20px;">INITIALIZING DATASWORN CORE...</div>
+    </div>
 </div>
 
 <script>
-    /**
-     * ASSET BROWSER LOGIC
-     */
-    let browserAssets = [];
-    let collectionsCache = {};
+    (async function initAssetBrowser() {
+        const grid = document.getElementById('asset-grid');
+        const catSelect = document.getElementById('category-select');
 
-    function formatDataswornText(text) {
-        if (!text) return "";
-        return text.replace(/\[([^\]]+)\]\(id:([^)]+)\)/g, (match, name, id) => {
-            return `<button class="inline-link" onclick="handleAssetPreviewRoll('${id}', '${name.replace(/'/g, "\\'")}')">${name}</button>`;
-        });
-    }
-
-    async function handleAssetPreviewRoll(id, name) {
-        if (confirm(`SIMULATE NEURAL LINK: ${name.toUpperCase()}?`)) {
-            await triggerNeuralRoll(name, 0, 0);
-        }
-    }
-
-    async function initAssets() {
-        console.log("Asset Module: Checking for Datasworn Core...");
         try {
-            // Wait for global Datasworn link
-            if (window.dataswornReady) await window.dataswornReady;
-            
-            // Standard Datasworn pathing
-            collectionsCache = window.datasworn.asset_collections || window.datasworn.collections?.assets || {};
-            
-            // Load character's current assets from Sheets
-            const stats = await loadStats(window.charId);
-            if (stats && stats.assets) {
-                try { browserAssets = JSON.parse(stats.assets); } catch(e) { browserAssets = []; }
+            // Wait for the global Datasworn promise from datasworn.js
+            await window.dataswornReady;
+            const data = window.datasworn;
+
+            if (!data || !data.asset_collections) {
+                throw new Error("Datasworn Data Core is empty or malformed.");
             }
 
-            document.getElementById('asset-status-msg').innerText = "REPOSITORY DECRYPTED";
-            
-            const select = document.getElementById('category-select');
-            const sortedKeys = Object.keys(collectionsCache).sort((a,b) => 
-                collectionsCache[a].name.localeCompare(collectionsCache[b].name)
-            );
-
-            select.innerHTML = sortedKeys.map(key => 
-                `<option value="${key}">${collectionsCache[key].name.toUpperCase()}</option>`
+            // Populate Categories
+            const collections = data.asset_collections;
+            catSelect.innerHTML = Object.keys(collections).sort().map(key => 
+                `<option value="${key}">${collections[key].name.toUpperCase()}</option>`
             ).join('');
-            
-            if (sortedKeys.length > 0) renderAssetGrid(sortedKeys[0]);
+
+            // Global render function
+            window.renderAssets = (catKey) => {
+                const assets = collections[catKey].contents;
+                grid.innerHTML = Object.values(assets).map(asset => {
+                    return `
+                        <div class="asset-card">
+                            <div class="asset-type">${collections[catKey].name}</div>
+                            <div class="asset-name">${asset.name}</div>
+                            <div style="font-size:0.7rem; margin-bottom:10px; color:#454d5d;">ID: ${asset._id}</div>
+                            
+                            <div class="abilities-list">
+                                ${(asset.abilities || []).map((ab, i) => `
+                                    <div class="ability">
+                                        <span style="color:#00ff9d;">${i === 0 ? '●' : '○'}</span> ${ab.text}
+                                    </div>
+                                `).join('')}
+                            </div>
+
+                            <button class="install-btn" onclick="claimAsset('${asset._id}', '${asset.name.replace(/'/g, "\\'")}')">
+                                INSTALL ASSET
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+            };
+
+            // Initial Render
+            renderAssets(catSelect.value);
 
         } catch (err) {
             console.error("Asset Browser Failure:", err);
-            document.getElementById('asset-status-msg').innerText = "LINK ENCRYPTION ERROR";
+            grid.innerHTML = `<div style="color:#ff0055; padding:20px;">DETACHED FROM CORE: ${err.message}</div>`;
         }
-    }
 
-    function handleCategoryChange(catKey) {
-        renderAssetGrid(catKey);
-    }
+        /**
+         * UPLINK TO PERSISTENT MEMORY
+         */
+        window.claimAsset = async function(assetId, name) {
+            if (confirm(`Authorize installation of ${name}?`)) {
+                document.getElementById('status-msg').innerText = "TRANSMITTING...";
+                
+                // Uses the global saveStat from sync.js
+                await saveStat(window.charId, "history_entry", `LOG: Installed Asset [${name}]`);
+                
+                // In a full build, you'd also save to a JSON array of owned assets
+                // await saveStat(window.charId, "owned_assets", ...);
 
-    function renderAssetGrid(catKey) {
-        const grid = document.getElementById('asset-grid');
-        const collection = collectionsCache[catKey];
-        if (!collection) return;
-
-        const assets = collection.contents || collection.assets || {};
-        
-        grid.innerHTML = Object.values(assets).map(asset => {
-            const isOwned = browserAssets.some(a => a.id === asset._id);
-            const reqText = typeof asset.requirement === 'string' ? asset.requirement : (asset.requirement?.text || 'None');
-            
-            return `
-            <div class="asset-card">
-                <div class="asset-type">${collection.name.toUpperCase()}</div>
-                <h4>${asset.name}</h4>
-                <div class="ability"><strong>Requirement:</strong> ${formatDataswornText(reqText)}</div>
-                ${(asset.abilities || []).map((ab, i) => `
-                    <div class="ability" style="opacity: ${i === 0 ? 1 : 0.6}">● ${formatDataswornText(ab.text || ab.description)}</div>
-                `).join('')}
-                <button class="install-btn" 
-                    ${isOwned ? 'disabled' : ''} 
-                    onclick="installAsset('${asset._id}', '${asset.name.replace(/'/g, "\\'")}')">
-                    ${isOwned ? 'ALREADY INSTALLED' : 'INSTALL ASSET'}
-                </button>
-            </div>
-        `}).join('');
-    }
-
-    async function installAsset(assetId, name) {
-        if (confirm(`Authorize installation of ${name}?`)) {
-            browserAssets.push({ id: assetId, enabled: [0] });
-            renderAssetGrid(document.getElementById('category-select').value);
-            document.getElementById('asset-status-msg').innerText = "TRANSMITTING MANIFEST...";
-            
-            // Direct call to sync.js
-            await saveStat(window.charId, "assets", JSON.stringify(browserAssets));
-            await saveStat(window.charId, "history_entry", `SYSTEM UPDATE: ${name} installed.`);
-            
-            document.getElementById('asset-status-msg').innerText = "MANIFEST UPDATED";
-        }
-    }
-
-    // Delay start to allow injection to finish
-    setTimeout(initAssets, 150);
+                document.getElementById('status-msg').innerText = "MANIFEST UPDATED";
+                alert(`${name} successfully uplinked to character profile.`);
+            }
+        };
+    })();
 </script>
