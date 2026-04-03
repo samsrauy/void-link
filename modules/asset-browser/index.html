@@ -9,7 +9,7 @@
         select { background: #161922; border: 1px solid #00ff9d; color: #00ff9d; padding: 8px; border-radius: 4px; outline: none; cursor: pointer; }
         
         .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .asset-card { background: #1a1c23; border: 1px solid #454d5d; border-radius: 8px; padding: 15px; position: relative; display: flex; flex-direction: column; min-height: 320px; }
+        .asset-card { background: #1a1c23; border: 1px solid #454d5d; border-radius: 8px; padding: 15px; position: relative; display: flex; flex-direction: column; min-height: 350px; }
         .asset-card:hover { border-color: #00ff9d; box-shadow: 0 0 10px rgba(0, 255, 153, 0.1); }
         .asset-card h4 { margin: 0 0 10px 0; color: #00ff9d; text-transform: uppercase; letter-spacing: 1px; }
         .asset-type { font-size: 0.7rem; color: #ff0055; margin-bottom: 10px; font-weight: bold; }
@@ -34,19 +34,13 @@
     <script>
         console.log("Asset Browser: System Startup...");
 
-        // Optimized Search: Looks for anything with the 'asset_category' type
+        // THE CRAWLER: Finds categories even if the schema shifts
         function findInDatasworn(obj, targetType) {
             let results = [];
             if (!obj || typeof obj !== 'object') return results;
-            
-            // If this object is what we want, grab it
-            if (obj.type === targetType) {
-                results.push(obj);
-            }
-
-            // Iterate through all keys to find nested collections
+            if (obj.type === targetType) results.push(obj);
             for (const key in obj) {
-                if (typeof obj[key] === 'object') {
+                if (obj[key] && typeof obj[key] === 'object') {
                     results = results.concat(findInDatasworn(obj[key], targetType));
                 }
             }
@@ -54,66 +48,73 @@
         }
 
         function init() {
-            // Check if data is fully loaded
             if (typeof datasworn === 'undefined' || datasworn === null) {
                 console.warn("Asset Browser: Data Core null. Retrying...");
                 setTimeout(init, 500);
                 return;
             }
 
-            console.log("Asset Browser: Neural Link Confirmed. Mapping Assets...");
-            
             try {
-                // Starforged Assets are usually in datasworn.assets
-                // We search the whole object just to be safe
-                const categories = findInDatasworn(datasworn, 'asset_category');
                 const select = document.getElementById('category-select');
                 
-                console.log(`Asset Browser: Found ${categories.length} categories.`);
+                // 1. Try Recursive Search (Future-Proof)
+                let categories = findInDatasworn(datasworn, 'asset_category');
 
-                if (!categories || categories.length === 0) {
-                    console.error("Asset Browser: Zero categories found. Checking schema structure...");
-                    console.log("Data Keys Available:", Object.keys(datasworn));
+                // 2. Fallback to Direct Mapping (Current Reliability)
+                if (categories.length === 0 && datasworn.assets) {
+                    console.log("Asset Browser: Falling back to direct key mapping.");
+                    categories = Object.values(datasworn.assets);
+                }
+
+                if (categories.length === 0) {
+                    console.error("Asset Browser: No categories found.");
                     return;
                 }
 
-                // Sort alphabetically for the pilot's convenience
-                categories.sort((a, b) => a.name.localeCompare(b.name));
+                // Sort Alphabetically
+                categories.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
                 select.innerHTML = categories.map(cat => 
-                    `<option value="${cat._id}">${cat.name.toUpperCase()}</option>`
+                    `<option value="${cat._id}">${(cat.name || "Unnamed").toUpperCase()}</option>`
                 ).join('');
                 
+                console.log(`Asset Browser: Loaded ${categories.length} categories.`);
                 renderAssets(categories[0]._id);
+
             } catch (err) {
                 console.error("Asset Browser: Initialization Crash ->", err);
             }
         }
 
         function renderAssets(catId) {
-            // Re-find the category object from the global data
-            const categories = findInDatasworn(datasworn, 'asset_category');
-            const category = categories.find(c => c._id === catId);
             const grid = document.getElementById('asset-grid');
-
+            
+            // Search for category object
+            let categories = findInDatasworn(datasworn, 'asset_category');
+            if (categories.length === 0 && datasworn.assets) categories = Object.values(datasworn.assets);
+            
+            const category = categories.find(c => c._id === catId);
             if (!category) return;
 
-            // Datasworn assets are stored in a 'contents' or 'assets' object
-            const assetList = category.contents || category.assets || {};
+            const assetList = category.assets || category.contents || {};
             
-            grid.innerHTML = Object.values(assetList).map(asset => `
+            grid.innerHTML = Object.entries(assetList).map(([id, asset]) => {
+                const name = asset.name || "Unknown Asset";
+                const abilities = asset.abilities || [];
+
+                return `
                 <div class="asset-card">
-                    <div class="asset-type">${category.name}</div>
-                    <h4>${asset.name}</h4>
+                    <div class="asset-type">${(category.name || "ASSET").toUpperCase()}</div>
+                    <h4>${name}</h4>
                     <div class="ability"><strong>Requirement:</strong> ${asset.requirement || 'None'}</div>
-                    ${asset.abilities ? asset.abilities.map((ab, i) => `
+                    ${abilities.map((ab, i) => `
                         <div class="ability" style="opacity: ${i === 0 ? 1 : 0.6}">
-                            ● ${ab.text || ab.description || 'Data missing'}
+                            ● ${ab.text || ab.description || "Data missing."}
                         </div>
-                    `).join('') : 'No abilities defined.'}
-                    <button class="install-btn" onclick="claimAsset('${asset._id}', '${asset.name.replace(/'/g, "\\'")}')">INSTALL ASSET</button>
+                    `).join('')}
+                    <button class="install-btn" onclick="claimAsset('${id}', '${name.replace(/'/g, "\\'")}')">INSTALL ASSET</button>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         async function claimAsset(id, name) {
@@ -125,8 +126,6 @@
             }
         }
 
-        init();
-        // Start the watch loop
         init();
     </script>
 </body>
