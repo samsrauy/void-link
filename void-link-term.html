@@ -7,35 +7,13 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; background: #050508; color: #00ff9d; font-family: 'Exo 2', sans-serif; overflow: hidden; }
         
-        /* --- LOGIN / SETUP SCREEN --- */
-        #login-screen {
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            height: 100vh; background: radial-gradient(circle, #0a0a1a 0%, #000 100%);
-        }
-        .setup-box { 
-            background: rgba(0, 255, 153, 0.05); border: 1px solid #00ff9d; padding: 40px; 
-            border-radius: 8px; text-align: center; box-shadow: 0 0 20px rgba(0, 255, 153, 0.1); 
-            width: 400px; 
-        }
-        .input-group { margin-bottom: 20px; text-align: left; }
-        .input-group label { display: block; font-size: 0.6rem; letter-spacing: 2px; margin-bottom: 5px; opacity: 0.7; }
-        .input-group input { 
-            background: #000; border: 1px solid #00ff9d; color: #00ff9d; width: 100%; 
-            padding: 10px; font-family: 'Share Tech Mono'; box-sizing: border-box; outline: none; 
-        }
-        .input-group input:focus { box-shadow: 0 0 10px rgba(0, 255, 153, 0.5); }
-        .btn-launch { 
-            background: #00ff9d; color: #000; border: none; padding: 15px; width: 100%; 
-            font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; transition: 0.2s; 
-        }
-        .btn-launch:hover { background: #fff; box-shadow: 0 0 15px #fff; }
-
-        /* --- TACTICAL HUD --- */
         #terminal-grid {
-            display: none; /* Hidden until authenticated */
+            display: grid;
             grid-template-columns: 350px 1fr 400px;
             grid-template-rows: 60px 1fr;
-            height: 100vh; gap: 2px; background: #1a1c23;
+            height: 100vh;
+            gap: 2px;
+            background: #1a1c23;
         }
 
         .header-bar { 
@@ -48,45 +26,25 @@
 
         #asset-drawer {
             position: fixed; top: 0; right: -450px; width: 450px; height: 100%;
-            background: #0b0d12; border-left: 2px solid #00ff9d;
-            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 1000; box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+            background: #0b0d12; border-left: 1px solid #00ff9d;
+            transition: right 0.3s ease; z-index: 1000;
         }
         #asset-drawer.open { right: 0; }
-
-        .btn-hex { background: rgba(0, 255, 153, 0.1); border: 1px solid #00ff9d; color: #00ff9d; padding: 5px 15px; cursor: pointer; font-family: 'Share Tech Mono'; }
+        .btn-hex { background: #161922; color: #00ff9d; border: 1px solid #00ff9d; padding: 5px 15px; cursor: pointer; font-family: 'Share Tech Mono'; }
+        .btn-hex:hover { background: #00ff9d; color: #000; }
     </style>
 </head>
 <body>
-
-    <div id="login-screen">
-        <div class="setup-box">
-            <h2 style="margin-top:0; letter-spacing: 4px;">VOID-LINK</h2>
-            <p style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 30px;">SECURE GM NEURAL NETWORK</p>
-            
-            <div class="input-group">
-                <label>AUTHORIZATION / CALLSIGN</label>
-                <input type="text" id="char-name-input" placeholder="e.g. Fallon, Kaelen, Jax" onkeypress="if(event.key === 'Enter') establishLink()">
-            </div>
-            
-            <button class="btn-launch" onclick="establishLink()">INITIALIZE UPLINK</button>
-            <p style="font-size: 0.6rem; opacity: 0.5; margin-top: 15px;">New callsigns will automatically generate a manifest.</p>
-        </div>
-    </div>
-
     <div id="terminal-grid">
-        <header class="header-bar">
-            <div>
-                <span style="letter-spacing: 3px; font-weight: bold;">VOID-LINK // TERMINAL</span>
-                <span id="char-display" style="color: #ff0055; margin-left: 15px;">[ LINKING... ]</span>
-            </div>
-            <nav>
-                <button class="btn-hex" onclick="toggleAssets()">📂 ASSET REPOSITORY</button>
-            </nav>
-        </header>
+        <div class="header-bar">
+            <span style="font-family: 'Share Tech Mono'; font-size: 1.2rem; letter-spacing: 2px;">VOID-LINK TERMINAL v1.0</span>
+            <span id="char-display" style="font-weight: bold; color: #fff;">ID: CONNECTING...</span>
+            <button class="btn-hex" onclick="toggleAssets()">ASSET MANIFEST</button>
+        </div>
 
-        <section><iframe id="frame-char" class="module-frame"></iframe></section>
-        <section><iframe id="frame-map" class="module-frame"></iframe></section>
-        <section><iframe id="frame-journal" class="module-frame"></iframe></section>
+        <iframe id="frame-char" class="module-frame"></iframe>
+        <iframe id="frame-map" class="module-frame"></iframe>
+        <iframe id="frame-journal" class="module-frame"></iframe>
     </div>
 
     <div id="asset-drawer">
