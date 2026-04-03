@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Nav-OS: Sector Map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="../../css/style.css">
+    <style>
+        /* --- NAV-OS THEME --- */
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background: #050508; color: #00ff9d; font-family: 'Share Tech Mono', monospace;
+            overflow: hidden;
+        }
+
+        #nav-interface {
+            display: flex; flex-direction: column; height: 100vh;
+        }
+
+        /* --- HEADER --- */
+        .nav-header {
+            padding: 10px 20px; background: rgba(10, 10, 14, 0.9);
+            border-bottom: 1px solid #00ff9d; display: flex; justify-content: space-between;
+            align-items: center; z-index: 10;
+        }
+
+        #coords-display { color: #ff0055; font-size: 1.2rem; text-shadow: 0 0 5px #ff0055; }
+
+        /* --- MAP VIEWPORT --- */
+        #map-viewport {
+            flex-grow: 1; position: relative; cursor: crosshair;
+            background-image: 
+                radial-gradient(circle at 2px 2px, rgba(0, 255, 153, 0.15) 1px, transparent 0);
+            background-size: 50px 50px; /* Visual grid matches logical grid */
+        }
+
+        /* --- THE SHIP TOKEN --- */
+        #ship-token {
+            width: 40px; height: 40px; position: absolute;
+            cursor: grab; transition: transform 0.1s ease;
+            filter: drop-shadow(0 0 8px #00ff9d);
+            z-index: 100;
+        }
+        #ship-token:active { cursor: grabbing; }
+
+        .ship-icon { fill: #00ff9d; stroke: #fff; stroke-width: 1px; }
+
+        /* --- HUD --- */
+        .hud-overlay {
+            position: absolute; bottom: 20px; left: 20px;
+            background: rgba(0, 0, 0, 0.8); border: 1px solid #454d5d;
+            padding: 10px; font-size: 0.8rem; pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="nav-interface">
+    <div class="nav-header">
+        <div>SYSTEM: NAV-OS // <span id="status-msg">INITIALIZING...</span></div>
+        <div id="coords-display">LOC: [0, 0]</div>
+    </div>
+
+    <div id="map-viewport">
+        <div id="ship-token" title="Drag to re-position vessel">
+            <svg viewBox="0 0 100 100">
+                <polygon points="50,5 95,95 50,75 5,95" class="ship-icon" />
+            </svg>
+        </div>
+
+        <div class="hud-overlay">
+            > PERSISTENT LINK: <span id="sync-status">OFFLINE</span><br>
+            > GRID_RES: 50px/Sector
+        </div>
+    </div>
+</div>
+
+<script src="../../js/sync.js"></script>
+<script src="../../js/datasworn.js"></script>
+
+<script>
+    const ship = document.getElementById('ship-token');
+    const viewport = document.getElementById('map-viewport');
+    const coordsDisplay = document.getElementById('coords-display');
+    const syncStatus = document.getElementById('sync-status');
+    
+    let isDragging = false;
+    let gridScale = 50; // Each grid square is 50px
+
+    /**
+     * INITIALIZATION
+     * Wait for DNA (Datasworn) and Nervous System (Sync)
+     */
+    async function init() {
+        try {
+            await window.dataswornReady;
+            document.getElementById('status-msg').innerText = "LINK ESTABLISHED";
+
+            // Load position from Google Sheets
+            const stats = await loadStats(charId);
+            if (stats && stats.map_coords) {
+                const [x, y] = stats.map_coords.split(',').map(Number);
+                moveShipToGrid(x, y, false);
+            } else {
+                moveShipToGrid(5, 5, false); // Default starting pos
+            }
+
+            syncStatus.innerText = "ONLINE";
+            syncStatus.style.color = "#00ff9d";
+        } catch (err) {
+            console.error("Map Init Error:", err);
+            document.getElementById('status-msg').innerText = "LINK FAILURE";
+        }
+    }
+
+    /**
+     * POSITIONING LOGIC
+     */
+    function moveShipToGrid(gridX, gridY, shouldSave = true) {
+        const pixelX = gridX * gridScale;
+        const pixelY = gridY * gridScale;
+
+        ship.style.left = pixelX + 'px';
+        ship.style.top = pixelY + 'px';
+
+        coordsDisplay.innerText = `LOC: [${gridX}, ${gridY}]`;
+
+        if (shouldSave) {
+            persistLocation(gridX, gridY);
+        }
+    }
+
+    async function persistLocation(x, y) {
+        syncStatus.innerText = "UPLOADING...";
+        await saveStat(charId, "map_coords", `${x},${y}`);
+        syncStatus.innerText = "SYNCED";
+    }
+
+    /**
+     * INTERACTION LOGIC (Drag & Drop)
+     */
+    ship.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        ship.style.cursor = 'grabbing';
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+
+        const rect = viewport.getBoundingClientRect();
+        let x = e.clientX - rect.left - (ship.offsetWidth / 2);
+        let y = e.clientY - rect.top - (ship.offsetHeight / 2);
+
+        // Constraints
+        x = Math.max(0, Math.min(x, rect.width - ship.offsetWidth));
+        y = Math.max(0, Math.min(y, rect.height - ship.offsetHeight));
+
+        ship.style.left = x + 'px';
+        ship.style.top = y + 'px';
+    });
+
+    window.addEventListener('mouseup', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        ship.style.cursor = 'grab';
+
+        // Snap to grid
+        const rect = viewport.getBoundingClientRect();
+        const gridX = Math.round((parseInt(ship.style.left)) / gridScale);
+        const gridY = Math.round((parseInt(ship.style.top)) / gridScale);
+
+        moveShipToGrid(gridX, gridY, true);
+    });
+
+    // Start
+    init();
+</script>
+
+</body>
+</html>
