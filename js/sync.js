@@ -4,7 +4,7 @@
 const params = new URLSearchParams(window.location.search);
 const sheetId = params.get('sheet');
 const charId = params.get('id');
-const GAS_URL = "YOUR_DEPLOYED_WEB_APP_URL_HERE"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwN24ooemboCTKWLdL4KxDyb7pyh4JCZgkfTglICcHVfq6FQVE7Cp6JcOF5KSZ_Maj2Kw/exec"; 
 
 // THE DICE ENGINE: Action Roll (1d6 + stat + adds vs 2d10)
 function rollDice(statValue = 0, adds = 0) {
