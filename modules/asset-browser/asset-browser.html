@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Asset Repository | Starforged</title>
+    <link rel="stylesheet" href="../../css/style.css">
+    <style>
+        body { background: #0b0d12; color: #00ff9d; font-family: 'Exo 2', sans-serif; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #1a1c23; padding-bottom: 10px; }
+        
+        select { 
+            background: #161922; border: 1px solid #454d5d; color: #00ff9d; 
+            padding: 8px; border-radius: 4px; outline: none; cursor: pointer; 
+            text-transform: uppercase; font-family: 'Share Tech Mono'; 
+        }
+        select:focus { border-color: #00ff9d; }
+
+        .asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        
+        .asset-card { 
+            background: #1a1c23; border: 1px solid #454d5d; border-radius: 8px; 
+            padding: 15px; display: flex; flex-direction: column; min-height: 380px; transition: 0.3s; 
+        }
+        .asset-card:hover { border-color: #00ff9d; transform: translateY(-2px); }
+        .asset-card h4 { margin: 0 0 10px 0; color: #00ff9d; text-transform: uppercase; letter-spacing: 1px; font-size: 1.1rem; }
+        
+        .asset-type { font-size: 0.6rem; color: #ff0055; margin-bottom: 10px; font-weight: bold; letter-spacing: 2px; }
+        .ability { font-size: 0.85rem; color: #bcdee7; margin-bottom: 12px; line-height: 1.4; }
+        
+        .inline-link { 
+            background: rgba(0, 255, 153, 0.1); border: none; border-bottom: 1px dashed #00ff9d; 
+            color: #00ff9d; padding: 0 2px; cursor: pointer; font-family: inherit; font-size: inherit; 
+        }
+
+        .install-btn { 
+            width: 100%; background: #00ff9d; color: #000; border: none; padding: 12px; 
+            font-weight: bold; cursor: pointer; margin-top: auto; text-transform: uppercase; letter-spacing: 1px; 
+        }
+        .install-btn:hover { background: #fff; }
+        .install-btn:disabled { background: #444; cursor: not-allowed; color: #888; }
+        
+        #status-msg { font-size: 0.6rem; color: #454d5d; text-transform: uppercase; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <div id="status-msg">ACCESSING ENCRYPTED REPOSITORY...</div>
+    <div class="header">
+        <h3 style="margin:0; letter-spacing:2px;">NEURAL ASSET REPOSITORY</h3>
+        <select id="category-select" onchange="handleCategoryChange(this.value)">
+            <option>UPLINKING...</option>
+        </select>
+    </div>
+    <div id="asset-grid" class="asset-grid"></div>
+
+    <script src="../../js/sync.js"></script>
+    <script src="../../js/datasworn.js"></script>
+
+    <script>
+        let currentAssets = [];
+        let assetCollections = {};
+
+        /**
+         * NEURAL LINK FORMATTER
+         */
+        function formatDataswornText(text) {
+            if (!text) return "";
+            return text.replace(/\[([^\]]+)\]\(id:([^)]+)\)/g, (match, name, id) => {
+                return `<button class="inline-link" onclick="handlePreviewRoll('${id}', '${name.replace(/'/g, "\\'")}')">${name}</button>`;
+            });
+        }
+
+        async function handlePreviewRoll(id, name) {
+            if (confirm(`SIMULATE NEURAL LINK: ${name.toUpperCase()}?`)) {
+                await triggerNeuralRoll(name, 0, 0);
+            }
+        }
+
+        /**
+         * INITIALIZATION
+         */
+        async function init() {
+            try {
+                // 1. Wait for DNA (Datasworn)
+                await window.dataswornReady;
+                
+                // 2. Map Assets Collection
+                assetCollections = window.datasworn.collections?.assets || {};
+                
+                // 3. Sync manifest from Persistent Memory (Google Sheets)
+                const stats = await loadStats(charId);
+                if (stats && stats.assets) {
+                    try { currentAssets = JSON.parse(stats.assets); } catch(e) { currentAssets = []; }
+                }
+
+                document.getElementById('status-msg').innerText = "REPOSITORY DECRYPTED";
+                
+                // Populate Category Selector
+                const select = document.getElementById('category-select');
+                const sortedKeys = Object.keys(assetCollections).sort((a,b) => 
+                    assetCollections[a].name.localeCompare(assetCollections[b].name)
+                );
+
+                select.innerHTML = sortedKeys.map(key => 
+                    `<option value="${key}">${assetCollections[key].name.toUpperCase()}</option>`
+                ).join('');
+                
+                // Initial Render
+                if (sortedKeys.length > 0) renderAssets(sortedKeys[0]);
+
+            } catch (err) {
+                console.error("Repository Failure:", err);
+                document.getElementById('status-msg').innerText = "LINK ENCRYPTION ERROR";
+            }
+        }
+
+        function handleCategoryChange(catKey) {
+            renderAssets(catKey);
+        }
+
+        function renderAssets(catKey) {
+            const grid = document.getElementById('asset-grid');
+            const collection = assetCollections[catKey];
+            if (!collection) return;
+
+            const assets = collection.assets || {};
+            
+            grid.innerHTML = Object.values(assets).map(asset => {
+                const isOwned = currentAssets.some(a => a.id === asset._id);
+                return `
+                <div class="asset-card">
+                    <div class="asset-type">${collection.name.toUpperCase()}</div>
+                    <h4>${asset.name}</h4>
+                    <div class="ability"><strong>Requirement:</strong> ${formatDataswornText(asset.requirement) || 'None'}</div>
+                    ${(asset.abilities || []).map((ab, i) => `
+                        <div class="ability" style="opacity: ${i === 0 ? 1 : 0.6}">● ${formatDataswornText(ab.text || ab.description)}</div>
+                    `).join('')}
+                    <button class="install-btn" 
+                        ${isOwned ? 'disabled' : ''} 
+                        onclick="claimAsset('${asset._id}', '${asset.name.replace(/'/g, "\\'")}')">
+                        ${isOwned ? 'ALREADY INSTALLED' : 'INSTALL ASSET'}
+                    </button>
+                </div>
+            `}).join('');
+        }
+
+        /**
+         * UPLINK TO PERSISTENT MEMORY
+         */
+        async function claimAsset(assetId, name) {
+            if (confirm(`Authorize installation of ${name}?`)) {
+                // Initialize asset with the first ability enabled (Standard Starforged Rule)
+                currentAssets.push({ id: assetId, enabled: [0] });
+                
+                // Re-render UI
+                renderAssets(document.getElementById('category-select').value);
+                
+                document.getElementById('status-msg').innerText = "TRANSMITTING MANIFEST...";
+                
+                // Save to Google Sheet
+                await saveStat(charId, "assets", JSON.stringify(currentAssets));
+                
+                // Optional: Log to history/journal
+                if (typeof saveStat === 'function') {
+                    await saveStat(charId, "history_entry", `SYSTEM UPDATE: ${name} installed.`);
+                }
+                
+                document.getElementById('status-msg').innerText = "MANIFEST UPDATED";
+            }
+        }
+
+        // Boot system
+        init();
+    </script>
+</body>
+</html>
