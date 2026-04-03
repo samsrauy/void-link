@@ -1,26 +1,68 @@
-async function loadModule(id, path) {
-    const target = document.getElementById(id);
-    const GITHUB_BASE = "https://samsrauy.github.io/void-link/modules/";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root { --neon-green: #00ff9d; --deep-bg: #050508; --panel-bg: #0b0d12; --border-dim: #1a1c23; }
+        #terminal-grid { display: grid; grid-template-columns: 350px 1fr; grid-template-rows: 60px 1fr 300px; height: 100vh; gap: 2px; background: var(--border-dim); }
+        .header-bar { grid-column: 1 / -1; background: var(--panel-bg); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--neon-green); }
+        .module-frame { background: var(--panel-bg); overflow-y: auto; border: 1px solid var(--border-dim); }
+        #frame-char { grid-row: 2 / 4; }
+        #frame-map { grid-column: 2; grid-row: 2; }
+        #frame-journal { grid-column: 2; grid-row: 3; }
+    </style>
+</head>
+<body>
+
+<div id="terminal-grid">
+    <div class="header-bar">
+        <div id="char-display">PILOT: LOADING...</div>
+        <div style="letter-spacing: 2px;">VOID-LINK // NAV-OS</div>
+    </div>
     
-    // Force the path to be absolute to GitHub
-    // If the path is just 'map/map.html', it becomes 'https://.../modules/map/map.html'
-    const fullPath = path.startsWith('http') ? path : GITHUB_BASE + path;
+    <div id="frame-char" class="module-frame"></div>
+    <div id="frame-map" class="module-frame"></div>
+    <div id="frame-journal" class="module-frame"></div>
+</div>
 
-    try {
-        const response = await fetch(fullPath);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const html = await response.text();
-        
-        target.innerHTML = html;
+<script>
+    // ABSOLUTE ADDRESSING CONFIG
+    const GITHUB_MODULES = "https://samsrauy.github.io/void-link/modules/";
 
-        // Execute scripts inside the module
-        target.querySelectorAll('script').forEach(oldScript => {
-            const newScript = document.createElement('script');
-            newScript.textContent = oldScript.textContent;
-            document.body.appendChild(newScript);
-        });
-    } catch (err) {
-        console.error(`Injection Error (${fullPath}):`, err);
-        target.innerHTML = `<div style="color:#ff0055; padding:20px;">LINK SEVERED: Check console for 404.</div>`;
+    async function loadModule(id, path) {
+        const target = document.getElementById(id);
+        const fullPath = path.startsWith('http') ? path : GITHUB_MODULES + path;
+
+        try {
+            const response = await fetch(fullPath);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const html = await response.text();
+            target.innerHTML = html;
+
+            target.querySelectorAll('script').forEach(oldScript => {
+                const newScript = document.createElement('script');
+                newScript.textContent = oldScript.textContent;
+                document.body.appendChild(newScript);
+            });
+        } catch (err) {
+            console.error(`Injection Error:`, err);
+            target.innerHTML = `<div style="color:red;padding:20px;">MODULE ERROR: ${path}</div>`;
+        }
     }
-}
+
+    async function bootTerminal() {
+        // Set Header
+        const display = document.getElementById('char-display');
+        if (display) display.innerText = `PILOT: ${window.charId.toUpperCase()}`;
+
+        // Load modules with absolute paths
+        await loadModule('frame-char', 'character-sheet/character-sheet.html');
+        await loadModule('frame-map', 'map/map.html');
+        await loadModule('frame-journal', 'journal/journal.html');
+    }
+
+    // Trigger boot
+    bootTerminal();
+</script>
+</body>
+</html>
