@@ -1,179 +1,191 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Nav-OS: Sector Map</title>
+    <title>Nav-OS: Sector Paging</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="../../css/style.css">
     <style>
-        /* --- NAV-OS THEME --- */
         html, body {
             margin: 0; padding: 0; width: 100%; height: 100%;
             background: #050508; color: #00ff9d; font-family: 'Share Tech Mono', monospace;
-            overflow: hidden;
+            overflow: hidden; touch-action: none; display: flex;
         }
 
-        #nav-interface {
-            display: flex; flex-direction: column; height: 100vh;
+        #tactical-sidebar {
+            width: 300px; background: rgba(10, 10, 14, 0.95);
+            border-right: 1px solid #00ff9d; display: flex; flex-direction: column;
+            z-index: 200; box-shadow: 10px 0 20px rgba(0,0,0,0.5);
         }
+        .sidebar-header { padding: 15px; border-bottom: 1px solid #1a1c23; }
+        .sidebar-content { padding: 15px; overflow-y: auto; flex-grow: 1; font-size: 0.8rem; }
+        .poi-card { background: #161922; border: 1px solid #454d5d; padding: 10px; margin-bottom: 10px; border-left: 3px solid #ff0055; }
 
-        /* --- HEADER --- */
+        #main-view { flex-grow: 1; position: relative; display: flex; flex-direction: column; }
         .nav-header {
             padding: 10px 20px; background: rgba(10, 10, 14, 0.9);
-            border-bottom: 1px solid #00ff9d; display: flex; justify-content: space-between;
-            align-items: center; z-index: 10;
+            border-bottom: 1px solid #00ff9d; display: flex; justify-content: space-between; align-items: center;
         }
 
-        #coords-display { color: #ff0055; font-size: 1.2rem; text-shadow: 0 0 5px #ff0055; }
-
-        /* --- MAP VIEWPORT --- */
         #map-viewport {
             flex-grow: 1; position: relative; cursor: crosshair;
-            background-image: 
-                radial-gradient(circle at 2px 2px, rgba(0, 255, 153, 0.15) 1px, transparent 0);
-            background-size: 50px 50px; /* Visual grid matches logical grid */
+            background-image: radial-gradient(circle at 1px 1px, rgba(0, 255, 153, 0.08) 1px, transparent 0);
+            background-size: 60px 60px;
         }
 
-        /* --- THE SHIP TOKEN --- */
-        #ship-token {
-            width: 40px; height: 40px; position: absolute;
-            cursor: grab; transition: transform 0.1s ease;
-            filter: drop-shadow(0 0 8px #00ff9d);
-            z-index: 100;
-        }
-        #ship-token:active { cursor: grabbing; }
-
-        .ship-icon { fill: #00ff9d; stroke: #fff; stroke-width: 1px; }
-
-        /* --- HUD --- */
-        .hud-overlay {
-            position: absolute; bottom: 20px; left: 20px;
-            background: rgba(0, 0, 0, 0.8); border: 1px solid #454d5d;
-            padding: 10px; font-size: 0.8rem; pointer-events: none;
-        }
+        #ship-token { width: 40px; height: 40px; position: absolute; cursor: grab; z-index: 100; filter: drop-shadow(0 0 8px #00ff9d); }
+        .poi-token { width: 30px; height: 30px; position: absolute; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 50; }
+        
+        .sector-indicator { position: absolute; top: 10px; right: 10px; font-size: 0.6rem; color: #454d5d; }
+        .btn-scan { background: #ff0055; color: #fff; border: none; padding: 10px; font-family: 'Share Tech Mono'; cursor: pointer; width: 100%; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="nav-interface">
-    <div class="nav-header">
-        <div>SYSTEM: NAV-OS // <span id="status-msg">INITIALIZING...</span></div>
-        <div id="coords-display">LOC: [0, 0]</div>
-    </div>
-
-    <div id="map-viewport">
-        <div id="ship-token" title="Drag to re-position vessel">
-            <svg viewBox="0 0 100 100">
-                <polygon points="50,5 95,95 50,75 5,95" class="ship-icon" />
-            </svg>
+    <div id="tactical-sidebar">
+        <div class="sidebar-header">
+            <div style="font-size: 0.6rem; opacity: 0.5;">CURRENT SECTOR</div>
+            <div id="sector-coords" style="color:#00ff9d; margin-bottom:10px;">SEC: [0, 0]</div>
+            <div id="poi-name" style="font-size: 1.2rem; color: #ff0055;">NO TARGET</div>
         </div>
-
-        <div class="hud-overlay">
-            > PERSISTENT LINK: <span id="sync-status">OFFLINE</span><br>
-            > GRID_RES: 50px/Sector
+        <div id="poi-details" class="sidebar-content">Select POI for analysis.</div>
+        <div style="padding: 15px;">
+            <button class="btn-scan" onclick="generateSector()">SCAN NEW SECTOR</button>
         </div>
     </div>
-</div>
 
-<script src="../../js/sync.js"></script>
-<script src="../../js/datasworn.js"></script>
+    <div id="main-view">
+        <div class="nav-header">
+            <div>NAV-OS // <span id="status-msg">READY</span></div>
+            <div id="coords-display">LOC: [0, 0]</div>
+        </div>
+        <div id="map-viewport">
+            <div id="ship-token"><svg viewBox="0 0 100 100"><polygon points="50,10 90,90 50,70 10,90" fill="#00ff9d"/></svg></div>
+        </div>
+    </div>
 
 <script>
     const ship = document.getElementById('ship-token');
     const viewport = document.getElementById('map-viewport');
-    const coordsDisplay = document.getElementById('coords-display');
-    const syncStatus = document.getElementById('sync-status');
-    
-    let isDragging = false;
-    let gridScale = 50; // Each grid square is 50px
+    const gridScale = 60;
+    const sectorSize = 10; // 10x10 grid squares per sector
 
-    /**
-     * INITIALIZATION
-     * Wait for DNA (Datasworn) and Nervous System (Sync)
-     */
+    let currentX = 0, currentY = 0;
+    let activeSector = { x: -1, y: -1 };
+    let mapPois = [];
+    let isDragging = false;
+
     async function init() {
         try {
-            await window.dataswornReady;
-            document.getElementById('status-msg').innerText = "LINK ESTABLISHED";
-
-            // Load position from Google Sheets
-            const stats = await loadStats(charId);
+            await window.parent.dataswornReady;
+            const stats = await window.parent.loadStats(window.parent.charId);
+            
             if (stats && stats.map_coords) {
                 const [x, y] = stats.map_coords.split(',').map(Number);
-                moveShipToGrid(x, y, false);
+                updatePosition(x, y, false);
             } else {
-                moveShipToGrid(5, 5, false); // Default starting pos
+                updatePosition(0, 0, false);
             }
-
-            syncStatus.innerText = "ONLINE";
-            syncStatus.style.color = "#00ff9d";
-        } catch (err) {
-            console.error("Map Init Error:", err);
-            document.getElementById('status-msg').innerText = "LINK FAILURE";
-        }
+        } catch (e) { document.getElementById('status-msg').innerText = "LINK ERROR"; }
     }
 
     /**
-     * POSITIONING LOGIC
+     * CORE LOGIC: Update position and check if we swapped sectors
      */
-    function moveShipToGrid(gridX, gridY, shouldSave = true) {
-        const pixelX = gridX * gridScale;
-        const pixelY = gridY * gridScale;
+    async function updatePosition(x, y, shouldSave = true) {
+        currentX = x;
+        currentY = y;
 
-        ship.style.left = pixelX + 'px';
-        ship.style.top = pixelY + 'px';
+        // Calculate current sector address
+        const secX = Math.floor(x / sectorSize);
+        const secY = Math.floor(y / sectorSize);
 
-        coordsDisplay.innerText = `LOC: [${gridX}, ${gridY}]`;
+        // Visual snap
+        const localX = x % sectorSize;
+        const localY = y % sectorSize;
+        ship.style.left = (localX * gridScale + 10) + 'px';
+        ship.style.top = (localY * gridScale + 10) + 'px';
+
+        document.getElementById('coords-display').innerText = `LOC: [${x}, ${y}]`;
+        document.getElementById('sector-coords').innerText = `SEC: [${secX}, ${secY}]`;
+
+        // If we entered a new sector, load its specific data
+        if (secX !== activeSector.x || secY !== activeSector.y) {
+            activeSector = { x: secX, y: secY };
+            await loadSectorData();
+        }
 
         if (shouldSave) {
-            persistLocation(gridX, gridY);
+            window.parent.saveStat(window.parent.charId, "map_coords", `${x},${y}`);
         }
     }
 
-    async function persistLocation(x, y) {
-        syncStatus.innerText = "UPLOADING...";
-        await saveStat(charId, "map_coords", `${x},${y}`);
-        syncStatus.innerText = "SYNCED";
+    async function loadSectorData() {
+        document.getElementById('status-msg').innerText = "LOADING SECTOR...";
+        const sectorKey = `sector_${activeSector.x}_${activeSector.y}`;
+        
+        // We fetch the unique stat for THIS sector
+        const stats = await window.parent.loadStats(window.parent.charId);
+        const sectorData = stats[sectorKey];
+        
+        mapPois = sectorData ? JSON.parse(sectorData) : [];
+        renderPois();
+        document.getElementById('status-msg').innerText = "LINK ACTIVE";
     }
 
-    /**
-     * INTERACTION LOGIC (Drag & Drop)
-     */
-    ship.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        ship.style.cursor = 'grabbing';
-    });
+    function renderPois() {
+        document.querySelectorAll('.poi-token').forEach(e => e.remove());
+        mapPois.forEach(poi => {
+            const el = document.createElement('div');
+            el.className = `poi-token`;
+            el.style.color = poi.type === 'star' ? '#fbbf24' : '#3b82f6';
+            el.innerHTML = poi.type === 'star' ? '★' : '●';
+            // Position POI relative to the 10x10 sector grid
+            el.style.left = (poi.x * gridScale + 15) + 'px';
+            el.style.top = (poi.y * gridScale + 15) + 'px';
+            el.onclick = () => {
+                document.getElementById('poi-name').innerText = poi.name.toUpperCase();
+                document.getElementById('poi-details').innerHTML = `<div class="poi-card">${poi.desc}</div>`;
+            };
+            viewport.appendChild(el);
+        });
+    }
 
-    window.addEventListener('mousemove', (e) => {
+    async function generateSector() {
+        document.getElementById('status-msg').innerText = "SCANNING...";
+        // Generate random POIs for this specific sector
+        const newPois = [
+            { x: Math.floor(Math.random()*10), y: Math.floor(Math.random()*10), type: 'star', name: "Alpha", desc: "Binary Star System" },
+            { x: Math.floor(Math.random()*10), y: Math.floor(Math.random()*10), type: 'planet', name: "Terra", desc: "Habitable World" }
+        ];
+        
+        const sectorKey = `sector_${activeSector.x}_${activeSector.y}`;
+        await window.parent.saveStat(window.parent.charId, sectorKey, JSON.stringify(newPois));
+        await loadSectorData();
+    }
+
+    // Drag Logic (Local Grid Snapping)
+    ship.onmousedown = () => isDragging = true;
+    window.onmousemove = (e) => {
         if (!isDragging) return;
-
         const rect = viewport.getBoundingClientRect();
-        let x = e.clientX - rect.left - (ship.offsetWidth / 2);
-        let y = e.clientY - rect.top - (ship.offsetHeight / 2);
-
-        // Constraints
-        x = Math.max(0, Math.min(x, rect.width - ship.offsetWidth));
-        y = Math.max(0, Math.min(y, rect.height - ship.offsetHeight));
-
-        ship.style.left = x + 'px';
-        ship.style.top = y + 'px';
-    });
-
-    window.addEventListener('mouseup', (e) => {
+        ship.style.left = (e.clientX - rect.left - 20) + 'px';
+        ship.style.top = (e.clientY - rect.top - 20) + 'px';
+    };
+    window.onmouseup = () => {
         if (!isDragging) return;
         isDragging = false;
-        ship.style.cursor = 'grab';
+        
+        // Calculate new global coordinates based on sector offset
+        const localX = Math.round((parseInt(ship.style.left)-10) / gridScale);
+        const localY = Math.round((parseInt(ship.style.top)-10) / gridScale);
+        
+        const globalX = (activeSector.x * sectorSize) + localX;
+        const globalY = (activeSector.y * sectorSize) + localY;
+        
+        updatePosition(globalX, globalY);
+    };
 
-        // Snap to grid
-        const rect = viewport.getBoundingClientRect();
-        const gridX = Math.round((parseInt(ship.style.left)) / gridScale);
-        const gridY = Math.round((parseInt(ship.style.top)) / gridScale);
-
-        moveShipToGrid(gridX, gridY, true);
-    });
-
-    // Start
     init();
 </script>
-
 </body>
 </html>
