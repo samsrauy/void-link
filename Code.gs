@@ -27,41 +27,54 @@
 
 function doGet(e) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const settingsSheet = ss.getSheetByName("Settings");
-  const statSheet = ss.getSheetByName("Stat");
+  const settings = ss.getSheetByName("Settings");
+  const stats = ss.getSheetByName("Stat");
+  
   const action = e.parameter.action;
-
-  // --- ROUTE 1: PERSISTENT LOGGING (GOOGLE DOCS) ---
-  if (action === "log") {
-    // Pull Doc ID from Settings Tab, Cell B3
-    const gDocsId = settingsSheet.getRange("B3").getValue();
-    return appendToLog(e.parameter, gDocsId);
-  }
-
-  // --- ROUTE 2: DATA PERSISTENCE (GOOGLE SHEETS) ---
-  const charId = e.parameter.id;
+  const id = e.parameter.id;
   const field = e.parameter.field;
   const val = e.parameter.val;
 
-  if (charId && field) {
-    // UPDATE LOGIC
-    const data = statSheet.getDataRange().getValues();
-    const headers = data[0];
-    const colIndex = headers.indexOf(field);
-    
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] == charId) {
-        statSheet.getRange(i + 1, colIndex + 1).setValue(val);
-        return ContentService.createTextOutput("SUCCESS");
-      }
+  // ROUTE 1: LOG TO GOOGLE DOC
+  if (action === "log") {
+    const docId = settings.getRange("B3").getValue();
+    return appendToLog(e.parameter, docId);
+  }
+
+  // ROUTE 2: DATA PERSISTENCE
+  if (id && field) {
+    let data = stats.getDataRange().getValues();
+    let headers = data[0];
+    let colIdx = headers.indexOf(field);
+
+    // Auto-create column if missing (e.g., map_coords)
+    if (colIdx === -1) {
+      colIdx = headers.length;
+      stats.getRange(1, colIdx + 1).setValue(field);
+      data = stats.getDataRange().getValues();
     }
-    return ContentService.createTextOutput("CHARACTER NOT FOUND");
-  } else if (charId) {
-    // READ LOGIC
-    const data = statSheet.getDataRange().getValues();
+
+    // Find or create character row
+    let rowIdx = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0].toString().toLowerCase() === id.toLowerCase()) { rowIdx = i + 1; break; }
+    }
+
+    if (rowIdx !== -1) {
+      stats.getRange(rowIdx, colIdx + 1).setValue(val);
+    } else {
+      let newRow = new Array(headers.length).fill("");
+      newRow[0] = id;
+      newRow[colIdx] = val;
+      stats.appendRow(newRow);
+    }
+    return ContentService.createTextOutput("OK");
+  } else if (id) {
+    // READ MODE
+    const data = stats.getDataRange().getValues();
     const headers = data[0];
     for (let i = 1; i < data.length; i++) {
-      if (data[i][0] == charId) {
+      if (data[i][0].toString().toLowerCase() === id.toLowerCase()) {
         let obj = {};
         headers.forEach((h, idx) => obj[h] = data[i][idx]);
         return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
@@ -70,35 +83,14 @@ function doGet(e) {
   }
 }
 
-/**
- * Appends formatted entries to the shared Google Doc Archive
- */
-function appendToLog(params, docId) {
+function appendToLog(p, docId) {
   try {
-    if (!docId || docId === "") return ContentService.createTextOutput("ERROR: No GDoc ID in Settings B3");
-    
     const doc = DocumentApp.openById(docId);
     const body = doc.getBody();
-    const timestamp = new Date().toLocaleString();
-    const user = (params.id || "Unknown").toUpperCase();
-    const message = params.message;
-
-    const entry = `[${timestamp}] ${user}: ${message}`;
+    const entry = `[${new Date().toLocaleString()}] ${(p.id || "UNK").toUpperCase()}: ${p.message}`;
     const para = body.appendParagraph(entry);
-    
-    // Aesthetic Styling
     para.setFontFamily("Courier New").setFontSize(9);
-    
-    if (message.includes("ROLL:")) {
-      para.setForegroundColor("#008b8b"); // Cyan-Teal for dice
-    } else if (message.includes("SYSTEM UPDATE:")) {
-      para.setForegroundColor("#8b0000"); // Red for Assets/System changes
-    } else {
-      para.setForegroundColor("#333333"); // Standard Dark Grey for logs
-    }
-
-    return ContentService.createTextOutput("SUCCESS");
-  } catch (err) {
-    return ContentService.createTextOutput("ERROR: " + err.toString());
-  }
+    if (p.message.includes("ROLL:")) para.setForegroundColor("#008b8b");
+    return ContentService.createTextOutput("OK");
+  } catch(err) { return ContentService.createTextOutput(err.toString()); }
 }
