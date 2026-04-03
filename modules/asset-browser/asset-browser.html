@@ -52,9 +52,6 @@
     </div>
     <div id="asset-grid" class="asset-grid"></div>
 
-    <script src="../../js/sync.js"></script>
-    <script src="../../js/datasworn.js"></script>
-
     <script>
         let currentAssets = [];
         let assetCollections = {};
@@ -71,7 +68,8 @@
 
         async function handlePreviewRoll(id, name) {
             if (confirm(`SIMULATE NEURAL LINK: ${name.toUpperCase()}?`)) {
-                await triggerNeuralRoll(name, 0, 0);
+                // Route roll through the parent window
+                await window.parent.triggerNeuralRoll(name, 0, 0);
             }
         }
 
@@ -80,14 +78,14 @@
          */
         async function init() {
             try {
-                // 1. Wait for DNA (Datasworn)
-                await window.dataswornReady;
+                // 1. Wait for DNA (Datasworn) from the parent window
+                await window.parent.dataswornReady;
                 
-                // 2. Map Assets Collection
-                assetCollections = window.datasworn.collections?.assets || {};
+                // 2. Map Assets Collection via the parent's datasworn object
+                assetCollections = window.parent.datasworn.collections?.assets || {};
                 
-                // 3. Sync manifest from Persistent Memory (Google Sheets)
-                const stats = await loadStats(charId);
+                // 3. Sync manifest from Persistent Memory (Google Sheets) via parent
+                const stats = await window.parent.loadStats(window.parent.charId);
                 if (stats && stats.assets) {
                     try { currentAssets = JSON.parse(stats.assets); } catch(e) { currentAssets = []; }
                 }
@@ -156,12 +154,12 @@
                 
                 document.getElementById('status-msg').innerText = "TRANSMITTING MANIFEST...";
                 
-                // Save to Google Sheet
-                await saveStat(charId, "assets", JSON.stringify(currentAssets));
+                // Save to Google Sheet via parent window
+                await window.parent.saveStat(window.parent.charId, "assets", JSON.stringify(currentAssets));
                 
-                // Optional: Log to history/journal
-                if (typeof saveStat === 'function') {
-                    await saveStat(charId, "history_entry", `SYSTEM UPDATE: ${name} installed.`);
+                // Log to history/journal via parent window
+                if (typeof window.parent.saveStat === 'function') {
+                    await window.parent.saveStat(window.parent.charId, "history_entry", `SYSTEM UPDATE: ${name} installed.`);
                 }
                 
                 document.getElementById('status-msg').innerText = "MANIFEST UPDATED";
