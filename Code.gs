@@ -12,7 +12,8 @@
  *    You'll want to do this because the project will use the Web App URL this script creates to tie everything together. BUT, since the software is designed to borrow
  *    HTML code and JS from the repository and only uses your Google Sheet and this App Script (which is only tied to that Google Sheet) only you and whomever you give
  *    access to it will be able to interact with it or *run* this script. But it's still a computer, who is not you.
- * 6. If you want to delete this and not use the project, all you have to do is delete your Google Sheet that you used for this game. That's the extent of "uninstaling."
+ * 6. Now, copy the Web App URL and enter that in cell Settings:B2 in your Google Sheet that's shared (you didn't forget, did ya?)
+ * 7. If you want to delete this and not use the project, all you have to do is delete your Google Sheet that you used for this game. That's the extent of "uninstaling."
  *    If only it was that easy to get rid of social media or crappy people. Sorry, I can't help with that!   
  * * 
  * ==============================================================================
