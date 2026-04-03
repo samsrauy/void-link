@@ -25,7 +25,6 @@
       
       // Establish the single source of truth for the Character ID globally
       window.charId = "<?= charId ?>"; 
-      if (window.charId) window.history.replaceState({}, '', '?id=' + window.charId);
 
       function getNonce() {
           return document.currentScript ? document.currentScript.nonce : '';
