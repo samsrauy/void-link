@@ -68,7 +68,6 @@
 
         async function handlePreviewRoll(id, name) {
             if (confirm(`SIMULATE NEURAL LINK: ${name.toUpperCase()}?`)) {
-                // Route roll through the parent window
                 await window.parent.triggerNeuralRoll(name, 0, 0);
             }
         }
@@ -78,13 +77,12 @@
          */
         async function init() {
             try {
-                // 1. Wait for DNA (Datasworn) from the parent window
                 await window.parent.dataswornReady;
                 
-                // 2. Map Assets Collection via the parent's datasworn object
-                assetCollections = window.parent.datasworn.collections?.assets || {};
+                // Aligning with standard Datasworn JSON schema (asset_collections) 
+                // Fallback to collections.assets in case of custom wrapper
+                assetCollections = window.parent.datasworn.asset_collections || window.parent.datasworn.collections?.assets || {};
                 
-                // 3. Sync manifest from Persistent Memory (Google Sheets) via parent
                 const stats = await window.parent.loadStats(window.parent.charId);
                 if (stats && stats.assets) {
                     try { currentAssets = JSON.parse(stats.assets); } catch(e) { currentAssets = []; }
@@ -102,7 +100,6 @@
                     `<option value="${key}">${assetCollections[key].name.toUpperCase()}</option>`
                 ).join('');
                 
-                // Initial Render
                 if (sortedKeys.length > 0) renderAssets(sortedKeys[0]);
 
             } catch (err) {
@@ -120,15 +117,19 @@
             const collection = assetCollections[catKey];
             if (!collection) return;
 
-            const assets = collection.assets || {};
+            // Aligning with standard Datasworn JSON (contents)
+            const assets = collection.contents || collection.assets || {};
             
             grid.innerHTML = Object.values(assets).map(asset => {
                 const isOwned = currentAssets.some(a => a.id === asset._id);
+                // Handle potential object structure for requirement text
+                const reqText = typeof asset.requirement === 'string' ? asset.requirement : (asset.requirement?.text || 'None');
+                
                 return `
                 <div class="asset-card">
                     <div class="asset-type">${collection.name.toUpperCase()}</div>
                     <h4>${asset.name}</h4>
-                    <div class="ability"><strong>Requirement:</strong> ${formatDataswornText(asset.requirement) || 'None'}</div>
+                    <div class="ability"><strong>Requirement:</strong> ${formatDataswornText(reqText)}</div>
                     ${(asset.abilities || []).map((ab, i) => `
                         <div class="ability" style="opacity: ${i === 0 ? 1 : 0.6}">● ${formatDataswornText(ab.text || ab.description)}</div>
                     `).join('')}
@@ -146,18 +147,12 @@
          */
         async function claimAsset(assetId, name) {
             if (confirm(`Authorize installation of ${name}?`)) {
-                // Initialize asset with the first ability enabled (Standard Starforged Rule)
                 currentAssets.push({ id: assetId, enabled: [0] });
-                
-                // Re-render UI
                 renderAssets(document.getElementById('category-select').value);
-                
                 document.getElementById('status-msg').innerText = "TRANSMITTING MANIFEST...";
                 
-                // Save to Google Sheet via parent window
                 await window.parent.saveStat(window.parent.charId, "assets", JSON.stringify(currentAssets));
                 
-                // Log to history/journal via parent window
                 if (typeof window.parent.saveStat === 'function') {
                     await window.parent.saveStat(window.parent.charId, "history_entry", `SYSTEM UPDATE: ${name} installed.`);
                 }
@@ -166,7 +161,6 @@
             }
         }
 
-        // Boot system
         init();
     </script>
 </body>
