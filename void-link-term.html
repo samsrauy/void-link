@@ -5,33 +5,57 @@
         <button onclick="toggleAssets()">MANIFEST</button>
     </div>
     
-    <iframe id="frame-char" class="module-frame" src=""></iframe>
-    <iframe id="frame-map" class="module-frame" src=""></iframe>
-    <iframe id="frame-journal" class="module-frame" src=""></iframe>
+    <div id="frame-char" class="module-frame" style="overflow-y: auto;"></div>
+    <div id="frame-map" class="module-frame" style="overflow-y: auto;"></div>
+    <div id="frame-journal" class="module-frame" style="overflow-y: auto;"></div>
 </div>
 
 <div id="asset-drawer">
     <button onclick="toggleAssets()" style="margin: 10px; width: calc(100% - 20px);">CLOSE MANIFEST</button>
-    <iframe id="frame-assets" class="module-frame" src="" style="height: calc(100% - 60px);"></iframe>
+    <div id="frame-assets" class="module-frame" style="height: calc(100% - 60px); overflow-y: auto;"></div>
 </div>
 
 <script>
-    // Boot function relies on the global window.charId provided by the host
-    function bootTerminal() {
+    /**
+     * MODULE LOADER
+     * Fetches HTML from GitHub and injects it into a DIV.
+     * Then manually executes any <script> tags found inside.
+     */
+    async function loadModule(targetId, filename) {
+        try {
+            const response = await fetch(`https://samsrauy.github.io/void-link/modules/${filename}`);
+            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+            
+            const html = await response.text();
+            const target = document.getElementById(targetId);
+            target.innerHTML = html;
+            
+            // Execute the scripts within the fragment
+            target.querySelectorAll('script').forEach(oldScript => {
+                const newScript = document.createElement('script');
+                if (oldScript.src) newScript.src = oldScript.src;
+                newScript.textContent = oldScript.textContent;
+                document.body.appendChild(newScript);
+                oldScript.remove();
+            });
+        } catch (err) {
+            console.error(`Failed to uplink module [${filename}]:`, err);
+            document.getElementById(targetId).innerHTML = `<div style="color:red; padding:10px;">MODULE OFFLINE: ${filename}</div>`;
+        }
+    }
+
+    async function bootTerminal() {
         if (!window.charId) {
-            console.error("Critical Failure: No Character ID found.");
-            document.getElementById('terminal-grid').innerHTML = "<div style='color:red; padding:20px;'>FATAL ERROR: CHARACTER ID MISSING. ACCESS DENIED.</div>";
+            document.getElementById('terminal-grid').innerHTML = "<div style='color:red; padding:20px;'>FATAL ERROR: ID MISSING.</div>";
             return;
         }
 
         document.getElementById('char-display').innerText = `ID: ${window.charId.toUpperCase()}`;
 
-        // Route the iframes
-        const query = `?id=${encodeURIComponent(window.charId)}`;
-        document.getElementById('frame-char').src = `modules/character-sheet/character-sheet.html${query}`;
-        document.getElementById('frame-map').src = `modules/map/map.html${query}`;
-        document.getElementById('frame-journal').src = `modules/journal/journal.html${query}`;
-        document.getElementById('frame-assets').src = `modules/asset-browser/asset-browser.html${query}`;
+        // Inject modules natively!
+        await loadModule('frame-char', 'character-sheet/character-sheet.html');
+        await loadModule('frame-assets', 'asset-browser/asset-browser.html');
+        // Add Map and Journal once they are ready
     }
 
     function toggleAssets() {
