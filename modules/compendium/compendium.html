@@ -4,68 +4,139 @@
     <meta charset="UTF-8">
     <title>Compendium | Starforged Neural Link</title>
     <link rel="stylesheet" href="../../css/style.css">
+    <style>
+        body { background: #0b0d12; color: #bcdee7; font-family: 'Exo 2', sans-serif; padding: 20px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #454d5d; padding-bottom: 10px; }
+        .tab-btn { background: #1a1c23; border: 1px solid #454d5d; color: #00ff9d; padding: 8px 15px; cursor: pointer; font-weight: bold; text-transform: uppercase; font-size: 0.7rem; letter-spacing: 1px; }
+        .tab-btn.active { background: #00ff9d; color: #000; border-color: #00ff9d; }
+        .search-bar { width: 100%; padding: 12px; background: #161922; border: 1px solid #454d5d; color: #00ff9d; margin-bottom: 20px; box-sizing: border-box; font-family: 'Share Tech Mono'; outline: none; }
+        .content-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 15px; }
+        .compendium-card { background: #1a1c23; border: 1px solid #454d5d; border-radius: 4px; padding: 15px; display: flex; flex-direction: column; transition: 0.2s; }
+        .compendium-card:hover { border-color: #00ff9d; }
+        .card-tag { font-size: 0.6rem; color: #ff0055; text-transform: uppercase; margin-bottom: 5px; font-weight: bold; opacity: 0.8; }
+        .card-title { font-weight: bold; color: #00ff9d; margin-bottom: 10px; display: block; border-bottom: 1px solid #2d333f; padding-bottom: 5px; letter-spacing: 1px; }
+        .card-text { font-size: 0.85rem; line-height: 1.5; color: #bcdee7; flex-grow: 1; }
+        .oracle-roll-btn { margin-top: 15px; background: none; border: 1px solid #00ff9d; color: #00ff9d; padding: 8px; font-family: 'Exo 2'; cursor: pointer; font-weight: bold; font-size: 0.7rem; text-transform: uppercase; }
+        .oracle-roll-btn:hover { background: #00ff9d; color: #000; }
+        .inline-link { background: rgba(0, 255, 153, 0.1); border: none; border-bottom: 1px dashed #00ff9d; color: #00ff9d; cursor: pointer; padding: 0 2px; font-family: inherit; }
+        #status-msg { font-size: 0.6rem; color: #454d5d; margin-bottom: 10px; text-transform: uppercase; }
+    </style>
 </head>
 <body>
-    <div class="header">
-        <div id="status-msg">LINKING TO DATASWORN DNA...</div>
-        <div class="search-wrap">
-            <input type="text" id="compendium-search" placeholder="SEARCH ORACLES/MOVES..." oninput="searchCompendium(this.value)">
-        </div>
+    <div id="status-msg">INITIALIZING ENCYCLOPEDIA...</div>
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('move', this)">Moves</button>
+        <button class="tab-btn" onclick="switchTab('oracle_rollable', this)">Oracles</button>
     </div>
-
-    <div id="compendium-content" class="compendium-grid">
-        </div>
+    
+    <input type="text" id="search" class="search-bar" placeholder="TYPE TO FILTER DATABASE..." oninput="filterResults()">
+    <div id="compendium-grid" class="content-grid"></div>
 
     <script src="../../js/sync.js"></script>
     <script src="../../js/datasworn.js"></script>
 
     <script>
+        let currentType = 'move';
+        let fullData = [];
+
         /**
-         * COMPENDIUM INIT
-         * This module acts as the library. It waits for dataswornReady
-         * then categorizes Oracles and Moves for browsing.
+         * REGEX: Neural Link Transformation
+         * Converts [Text](id:...) into triggerable Neural Roll buttons.
+         */
+        function formatText(text) {
+            if (!text) return "";
+            return text.replace(/\[([^\]]+)\]\(id:([^)]+)\)/g, (match, name, id) => {
+                return `<button class="inline-link" onclick="handleMoveLink('${id}', '${name.replace(/'/g, "\\'")}')">${name}</button>`;
+            });
+        }
+
+        async function handleMoveLink(id, name) {
+            if (confirm(`EXECUTE NEURAL ROLL: ${name.toUpperCase()}?`)) {
+                // Now safely calls triggerNeuralRoll in sync.js
+                if (typeof triggerNeuralRoll === 'function') await triggerNeuralRoll(name, 0, 0);
+            }
+        }
+
+        async function handleOracleRoll(oracleName, oracleId) {
+            const roll = Math.floor(Math.random() * 100) + 1;
+            const logMsg = `ORACLE: ${oracleName} rolled ${roll}`;
+            // Nervous System uplink
+            await saveStat(charId, "history_entry", logMsg);
+            alert(`${oracleName}: Result ${roll} (Logged to Archive)`);
+        }
+
+        /**
+         * THE CRAWLER
+         * Navigates the DNA (window.datasworn) to find specific item types.
+         */
+        function findItems(obj, type) {
+            let results = [];
+            if (!obj || typeof obj !== 'object') return results;
+            if (obj.type === type) results.push(obj);
+            for (let k in obj) { 
+                if (obj[k] && typeof obj[k] === 'object') results = results.concat(findItems(obj[k], type)); 
+            }
+            return results;
+        }
+
+        /**
+         * THE NEURAL PRIME INIT
+         * Eliminates the recursive loop. Waits for DNA core then populates UI.
          */
         async function init() {
             try {
-                // 1. Wait for the DNA Core
+                // Wait for datasworn.js to finish its fetch
                 await window.dataswornReady;
+
+                if (!window.datasworn) throw new Error("DNA Core Fragmented or Offline.");
+
+                document.getElementById('status-msg').innerText = "DATABASE ONLINE";
                 
-                if (!window.datasworn) throw new Error("Data Core Offline");
-
-                console.log("Compendium: Neural Link Established.");
-                document.getElementById('status-msg').innerText = "ARCHIVES DECRYPTED";
-
-                // Initial render: show Move categories by default
-                renderCategories();
+                // Perform initial data pull
+                fullData = findItems(window.datasworn, currentType);
+                filterResults();
 
             } catch (err) {
-                console.error("Compendium Link Failure:", err);
-                document.getElementById('status-msg').innerText = "ARCHIVE ERROR: LINK SEVERED";
+                console.error("Compendium Init Failed:", err);
+                document.getElementById('status-msg').innerText = "SYSTEM ERROR: ARCHIVE UNAVAILABLE";
             }
         }
 
-        function renderCategories() {
-            const content = document.getElementById('compendium-content');
-            // Starforged path: moves and oracles
-            const moves = window.datasworn.moves || {};
-            const oracles = window.datasworn.oracles || {};
-
-            let html = `<h3>MOVE CATEGORIES</h3><div class="cat-list">`;
-            for (const [key, cat] of Object.entries(moves)) {
-                html += `<button onclick="showMoveCategory('${key}')">${cat.name.toUpperCase()}</button>`;
-            }
-            html += `</div><h3>ORACLE TABLES</h3><div class="cat-list">`;
-            for (const [key, cat] of Object.entries(oracles)) {
-                html += `<button onclick="showOracleCategory('${key}')">${cat.name.toUpperCase()}</button>`;
-            }
-            html += `</div>`;
+        function switchTab(type, btn) {
+            currentType = type;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
             
-            content.innerHTML = html;
+            // Re-crawl based on type
+            fullData = findItems(window.datasworn, currentType);
+            filterResults();
         }
 
-        // ... showMoveCategory and showOracleCategory logic would go here ...
-        // These will use window.datasworn.moves[id] and window.datasworn.oracles[id]
+        function filterResults() {
+            const query = document.getElementById('search').value.toLowerCase();
+            const grid = document.getElementById('compendium-grid');
+            
+            // Filter list based on search bar input
+            const filtered = fullData.filter(item => 
+                (item.name && item.name.toLowerCase().includes(query)) || 
+                (item._id && item._id.toLowerCase().includes(query))
+            );
 
+            grid.innerHTML = filtered.map(item => `
+                <div class="compendium-card">
+                    <div class="card-tag">${currentType.replace('_', ' ')}</div>
+                    <span class="card-title">${(item.name || "UNNAMED").toUpperCase()}</span>
+                    <div class="card-text">
+                        ${formatText(item.text || item.description || "No localized data available.")}
+                    </div>
+                    ${currentType === 'oracle_rollable' ? 
+                        `<button class="oracle-roll-btn" onclick="handleOracleRoll('${item.name}', '${item._id}')">CONSULT ORACLE</button>` : ''
+                    }
+                </div>
+            `).join('');
+        }
+
+        // Start the link
         init();
     </script>
 </body>
