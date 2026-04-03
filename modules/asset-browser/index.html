@@ -67,29 +67,43 @@
 
         async function init() {
             // DUAL GUARD
-            const isSyncReady = (typeof GAS_URL !== 'undefined' && typeof loadStats === 'function');
-            const isDataReady = (typeof datasworn !== 'undefined' && datasworn !== null);
+            const isSyncReady = (typeof GAS_URL !== 'undefined' && !GAS_URL.includes("YOUR_DEPLOYED"));
+            const isDataReady = (typeof datasworn !== 'undefined' && datasworn.assets);
 
-            if (!isSyncReady || !isDataReady) {
-                setTimeout(init, 500);
-                return;
-            }
+           // If data isn't deep enough yet, wait.
+           if (!isSyncReady || !isDataReady) {
+               setTimeout(init, 500);
+               return;
+           }
 
-            document.getElementById('status-msg').innerText = "REPOSITORY DECRYPTED";
-            
-            // Pre-load current character assets so we don't overwrite them
-            const stats = await loadStats(charId);
-            if (stats && stats.assets) {
-                try { currentAssets = JSON.parse(stats.assets); } catch(e) { currentAssets = []; }
-            }
+           // Attempt to find categories
+           let categories = findInDatasworn(datasworn, 'asset_category');
+    
+           // CRITICAL FIX: If datasworn is "Ready" but findInDatasworn returned nothing, 
+           // the JSON tree hasn't fully branched yet. Wait longer.
+           if (!categories || categories.length === 0) {
+               console.log("Asset Browser: Data core online, but categories not yet indexed...");
+               setTimeout(init, 1000);
+               return;
+           }
 
-            const select = document.getElementById('category-select');
-            let categories = findInDatasworn(datasworn, 'asset_category');
-            
-            categories.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-            select.innerHTML = categories.map(cat => `<option value="${cat._id}">${(cat.name || "Unnamed").toUpperCase()}</option>`).join('');
-            
-            renderAssets(categories[0]._id);
+           document.getElementById('status-msg').innerText = "REPOSITORY DECRYPTED";
+    
+           // Load current assets for the "Already Installed" check
+           const stats = await loadStats(charId);
+           if (stats && stats.assets) {
+               try { currentAssets = JSON.parse(stats.assets); } catch(e) { currentAssets = []; }
+           }
+
+           const select = document.getElementById('category-select');
+           categories.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    
+           select.innerHTML = categories.map(cat => `<option value="${cat._id}">${(cat.name || "Unnamed").toUpperCase()}</option>`).join('');
+    
+           // Final safety check before calling _id
+           if (categories[0] && categories[0]._id) {
+               renderAssets(categories[0]._id);
+           }
         }
 
         function handleCategoryChange(catId) {
