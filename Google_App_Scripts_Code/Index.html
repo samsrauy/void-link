@@ -9,71 +9,63 @@
         width: 100vw; height: 100vh; display: flex; align-items: center; 
         justify-content: center; text-align: center; flex-direction: column;
       }
-      .loader-text { margin-top: 20px; letter-spacing: 2px; text-transform: uppercase; }
     </style>
   </head>
   <body>
     
     <div id="loading-screen">
-      <div class="loader-text" id="status-display">Initializing Neural Link...</div>
+      <div id="status-display">INITIALIZING NEURAL LINK...</div>
     </div>
 
     <div id="starforged-terminal" style="display: none;"></div>
 
     <script>
       const GITHUB_BASE_URL = "https://samsrauy.github.io/void-link";
-      
-      // 1. Capture the ID passed from Code.gs template
       window.charId = "<?= charId ?>"; 
 
       async function bootSystem() {
           const status = document.getElementById('status-display');
 
-          // 2. IDENTITY CHECK: If no ?id= in URL, prompt and redirect
+          // 1. IDENTITY GUARD: Redirect if ?id= is missing
           if (!window.charId || window.charId === "" || window.charId === "null") {
               const pilotName = prompt("NEURAL LINK INCOMPLETE. PLEASE ENTER PILOT CALLSIGN:");
-              
               if (pilotName && pilotName.trim() !== "") {
-                  // Redirect to the same URL but append the ID
                   const baseUrl = window.location.href.split('?')[0];
-                  window.location.href = baseUrl + "?id=" + encodeURIComponent(pilotName.trim());
+                  window.top.location.href = baseUrl + "?id=" + encodeURIComponent(pilotName.trim());
                   return; 
               } else {
-                  status.innerHTML = `<span style='color:#ff0055;'>ACCESS DENIED: VALID CALLSIGN REQUIRED.</span><br>
-                                     <button onclick="location.reload()" style="margin-top:20px">RETRY AUTH</button>`;
+                  status.innerHTML = "<span style='color:#ff0055;'>ACCESS DENIED: CALLSIGN REQUIRED.</span>";
                   return;
               }
           }
 
-          // 3. LOAD FRAGMENTS: If ID is present, fetch the UI from GitHub
+          // 2. FETCH CORE UI
           try {
               status.innerText = "MOUNTING UI FRAGMENTS...";
               const response = await fetch(`${GITHUB_BASE_URL}/void-link-term.html`);
-              if (!response.ok) throw new Error("Link to GitHub Repository Severed.");
+              if (!response.ok) throw new Error("Connection to GitHub Repository failed.");
               
               const terminalDiv = document.getElementById('starforged-terminal');
               terminalDiv.innerHTML = await response.text();
 
-              // 4. REVIVE SCRIPTS: Standard innerHTML doesn't run <script> tags, we must manually revive them
-              terminalDiv.querySelectorAll('script').forEach(deadScript => {
-                  const liveScript = document.createElement('script');
-                  liveScript.textContent = deadScript.textContent;
-                  document.body.appendChild(liveScript);
-                  deadScript.remove();
-              });
-
-              // 5. INJECT ENGINES: Load the logic and sync handlers
+              // 3. LOAD LOGIC ENGINES (Load JS before reviving HTML scripts)
               status.innerText = "ESTABLISHING DATA UPLINK...";
               await injectScript('js/datasworn.js');
               await injectScript('js/sync.js');
 
-              // 6. FINAL BOOT
+              // 4. REVIVE INJECTED SCRIPTS
+              terminalDiv.querySelectorAll('script').forEach(oldScript => {
+                  const newScript = document.createElement('script');
+                  newScript.textContent = oldScript.textContent;
+                  document.body.appendChild(newScript);
+                  oldScript.remove();
+              });
+
+              // 5. FINALIZE
               document.getElementById('loading-screen').style.display = 'none';
               terminalDiv.style.display = 'block';
               
-              if (typeof bootTerminal === 'function') {
-                  bootTerminal();
-              }
+              if (typeof bootTerminal === 'function') bootTerminal();
 
           } catch (err) {
               status.innerHTML = `<span style='color:#ff0055;'>CRITICAL BOOT FAILURE:</span><br>${err.message}`;
@@ -88,7 +80,6 @@
           document.body.appendChild(scriptEl);
       }
 
-      // Start the sequence
       bootSystem();
     </script>
   </body>
