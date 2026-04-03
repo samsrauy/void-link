@@ -2,40 +2,117 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <title>Journal | Starforged Archive</title>
     <link rel="stylesheet" href="../../css/style.css">
-</head>
-<body style="background:#0b0d12; color:#e2e4e9; padding:15px; font-family:'Exo 2'; display:flex; flex-direction:column; height:95vh;">
-    <div style="font-size:0.7rem; margin-bottom:10px;">
-        <span id="sync-indicator" style="width:8px; height:8px; border-radius:50%; background:#444; display:inline-block;"></span> LOG CHANNEL
-        <span id="last-saved" style="float:right; opacity:0.5;">BOOTING...</span>
-    </div>
-    <textarea id="journal-input" style="flex-grow:1; background:#161922; color:#bcdee7; border:1px solid #454d5d; padding:15px; font-family:'Share Tech Mono'; outline:none; resize:none;"></textarea>
-    <button class="save-btn" onclick="commitEntry()" style="background:#00ff9d; color:#000; border:none; padding:12px; font-weight:bold; cursor:pointer; margin-top:10px;">COMMIT TO ARCHIVE</button>
+    <style>
+        body { background: #0b0d12; color: #bcdee7; padding: 20px; font-family: 'Exo 2'; display: flex; flex-direction: column; height: 95vh; margin: 0; overflow: hidden; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.7rem; letter-spacing: 1px; }
+        #sync-indicator { width: 8px; height: 8px; border-radius: 50%; background: #444; display: inline-block; margin-right: 5px; }
+        #sync-indicator.online { background: #00ff9d; box-shadow: 0 0 8px #00ff9d; }
 
-    <script src="../../js/sync.js"></script>
+        /* The active writing area */
+        .workspace { flex: 2; display: flex; flex-direction: column; min-height: 0; }
+        textarea { 
+            flex-grow: 1; background: #161922; color: #00ff9d; border: 1px solid #454d5d; 
+            padding: 20px; font-family: 'Share Tech Mono'; font-size: 1rem; outline: none; 
+            resize: none; line-height: 1.6; border-radius: 4px;
+        }
+
+        /* The scrollable history feed */
+        .history-feed { flex: 1; margin-top: 20px; border-top: 1px solid #1a1c23; padding-top: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .history-item { background: rgba(255,255,255,0.03); padding: 10px; border-radius: 4px; border-left: 2px solid #454d5d; font-size: 0.8rem; }
+        .history-date { font-size: 0.6rem; color: #ff0055; margin-bottom: 5px; font-family: 'Share Tech Mono'; }
+
+        .button-bar { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-top: 15px; }
+        .btn { border: none; padding: 14px; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; font-family: 'Exo 2'; transition: 0.2s; }
+        .save-btn { background: #00ff9d; color: #000; }
+        .draft-btn { background: #1a1c23; color: #454d5d; border: 1px solid #454d5d; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div><span id="sync-indicator"></span> ACTIVE BUFFER</div>
+        <div id="status-msg">READY...</div>
+    </div>
+
+    <div class="workspace">
+        <textarea id="journal-input" placeholder="START TRANSMISSION..."></textarea>
+    </div>
+
+    <div class="button-bar">
+        <button class="btn draft-btn" onclick="saveDraft()">Cache Draft</button>
+        <button class="btn save-btn" onclick="commitToArchive()">Commit to Archive</button>
+    </div>
+
+    <div class="header" style="margin-top:20px;"><span>RECENT UPLINKS</span></div>
+    <div id="history-feed" class="history-feed">
+        </div>
+
     <script>
         const textarea = document.getElementById('journal-input');
         const indicator = document.getElementById('sync-indicator');
-        const timestamp = document.getElementById('last-saved');
+        const statusMsg = document.getElementById('status-msg');
+        const historyFeed = document.getElementById('history-feed');
 
         async function init() {
-            // Wait for Bootstrap to find the GAS_URL
-            if (!GAS_URL) { setTimeout(init, 500); return; }
-            const stats = await loadStats(charId);
-            if (stats) {
-                indicator.style.background = "#00ff9d";
-                textarea.value = stats.journal || "";
-                timestamp.innerText = "LINK ESTABLISHED";
+            try {
+                await window.parent.dataswornReady;
+                const stats = await window.parent.loadStats(window.parent.charId);
+                
+                if (stats) {
+                    indicator.classList.add('online');
+                    // 1. Load the "Buffer" (only what was unsaved)
+                    textarea.value = stats.journal_draft || "";
+                    
+                    // 2. Load the "History" (last few entries from the sheet log)
+                    if (stats.history) {
+                        renderHistory(stats.history);
+                    }
+                }
+            } catch (err) {
+                statusMsg.innerText = "LINK SEVERED";
             }
         }
 
-        async function commitEntry() {
+        function renderHistory(historyArray) {
+            // Assume historyArray is an array of strings or objects from the backend
+            historyFeed.innerHTML = historyArray.slice(-5).reverse().map(entry => `
+                <div class="history-item">
+                    <div class="history-date">ARCHIVED ENTRY</div>
+                    <div>${entry}</div>
+                </div>
+            `).join('');
+        }
+
+        async function saveDraft() {
+            const content = textarea.value;
+            statusMsg.innerText = "CACHING...";
+            await window.parent.saveStat(window.parent.charId, "journal_draft", content);
+            statusMsg.innerText = "CACHED: " + new Date().toLocaleTimeString();
+        }
+
+        async function commitToArchive() {
             const content = textarea.value.trim();
             if (!content) return;
-            timestamp.innerText = "TRANSMITTING...";
-            await saveStat(charId, "journal", content);
-            timestamp.innerText = "LAST ARCHIVE: " + new Date().toLocaleTimeString();
+
+            if (confirm("Permanently archive this entry? The buffer will be cleared.")) {
+                statusMsg.innerText = "TRANSMITTING...";
+                
+                // This triggers the Google App Script to:
+                // 1. Append to the Google Doc
+                // 2. Add a row to the 'History' tab of the Sheet
+                await window.parent.saveStat(window.parent.charId, "history_entry", content);
+                
+                // Clear the buffer (the loading dock)
+                await window.parent.saveStat(window.parent.charId, "journal_draft", "");
+                textarea.value = "";
+                
+                statusMsg.innerText = "ARCHIVE SECURED";
+                init(); // Refresh history
+            }
         }
+
         init();
     </script>
 </body>
