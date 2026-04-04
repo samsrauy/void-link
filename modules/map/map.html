@@ -20,25 +20,19 @@
         #map-scope .data-text { color: #aab; line-height: 1.4; font-size: 0.8rem; margin-bottom: 4px; }
         #map-scope .tag { font-size: 0.6rem; background: #161922; padding: 2px 6px; border-radius: 4px; border: 1px solid #454d5d; display: inline-block; margin-right: 4px; color: #ff0055;}
 
-        /* Editable Fields Styling */
         #map-scope .editable { border-bottom: 1px dashed #454d5d; cursor: text; outline: none; transition: 0.2s; display: inline-block; min-width: 20px; }
         #map-scope .editable:focus { border-bottom-color: #00ff9d; background: rgba(0,255,153,0.1); }
 
-        /* Main Viewport & HEX Grid */
         #map-viewport { 
             flex-grow: 1; position: relative; overflow: hidden;
             background-color: #020204;
-            /* Precise Hexagon SVG Grid */
             background-image: url("data:image/svg+xml,%3Csvg width='60' height='103.923' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.981 15v30L30 60 4.019 45V15zm0 51.961l25.981 15v30L30 111.961 4.019 96.961v-30z' fill='none' stroke='rgba(0, 255, 153, 0.08)' stroke-width='1'/%3E%3C/svg%3E");
             background-size: 60px 103.923px;
         }
 
-        /* Dynamic Starscape Layer */
         #starscape { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
-        
         #map-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
         
-        /* Map Tokens */
         .poi-token { 
             position: absolute; width: 16px; height: 16px; border-radius: 50%; 
             background: #000; border: 2px solid #00ff9d; transform: translate(-50%, -50%);
@@ -54,7 +48,6 @@
             white-space: nowrap; border-radius: 2px;
         }
 
-        /* Starship Token */
         #ship-token {
             position: absolute; width: 20px; height: 20px; 
             background: rgba(0, 255, 153, 0.2); border: 2px solid #fff; 
@@ -66,7 +59,6 @@
         }
         #ship-token:active { cursor: grabbing; border-color: #ff0055; background: rgba(255,0,85,0.3); transform: translate(-50%, -50%) scale(1.2); }
 
-        /* SVG Lines for Passages */
         #passages-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
         .passage-line { stroke: rgba(0, 255, 153, 0.3); stroke-width: 2; stroke-dasharray: 4; fill: none; }
     </style>
@@ -99,6 +91,12 @@
         <div id="starscape"></div>
         <svg id="passages-layer"></svg>
         <div id="map-content"></div>
+        
+        <svg id="ruler-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100;">
+            <line id="ruler-line" x1="0" y1="0" x2="0" y2="0" stroke="#ff0055" stroke-width="2" stroke-dasharray="5,5" display="none" />
+            <rect id="ruler-bg" fill="#1a1c23" stroke="#454d5d" stroke-width="1" rx="4" display="none" />
+            <text id="ruler-text" fill="#ff0055" font-family="'Share Tech Mono', monospace" font-size="12" font-weight="bold" text-anchor="middle" dominant-baseline="middle" display="none"></text>
+        </svg>
     </div>
 </div>
 
@@ -112,13 +110,19 @@
         const archiveSelect = document.getElementById('archive-select');
         const statusMsg = document.getElementById('map-status');
         
-        // Hex Grid Math Variables
+        // Ruler SVG Elements
+        const rulerLine = document.getElementById('ruler-line');
+        const rulerBg = document.getElementById('ruler-bg');
+        const rulerText = document.getElementById('ruler-text');
+        
         const HEX_W = 60; 
         const HEX_H = 103.923;
         
         let activeSector = null;
         let isDragging = false;
         let shipElement = null;
+        let dragStartX = 0;
+        let dragStartY = 0;
 
         const REGION_RULES = {
             'terminus': { settlements: 4, passages: 3 },
@@ -126,7 +130,6 @@
             'expanse':  { settlements: 2, passages: 1 }
         };
 
-        // Fallback Name Generators
         const charNames = ["Jax", "Kaelen", "Lyra", "Voss", "Sira", "Tark", "Rian", "Cora", "Dax", "Elara", "Zane", "Nova", "Kian"];
         const secPrefix = ["Aegis", "Vanguard", "Helios", "Erebus", "Corsair", "Nova", "Obsidian", "Cygnus", "Talos", "Onyx"];
         const secSuffix = ["Reach", "Expanse", "Drift", "Cluster", "Sector", "Nebula", "Void", "Abyss", "Veil"];
@@ -147,12 +150,10 @@
         function generateStarscape() {
             const bg = document.getElementById('starscape');
             bg.innerHTML = '';
-            // Generate Nebula Gradient
             const nebX = Math.floor(Math.random() * 100);
             const nebY = Math.floor(Math.random() * 100);
             bg.style.backgroundImage = `radial-gradient(circle at ${nebX}% ${nebY}%, rgba(0, 150, 255, 0.05) 0%, transparent 60%)`;
             
-            // Generate Stars
             for(let i=0; i<100; i++) {
                 const star = document.createElement('div');
                 const size = Math.random() * 2 + 1;
@@ -167,11 +168,10 @@
             }
         }
 
-        // Translates abstract coordinates into perfect CSS Hex positions
         function getHexPixel(gx, gy) {
             const px = gx * (HEX_W * 0.75);
             let py = gy * HEX_H;
-            if (gx % 2 !== 0) py += (HEX_H / 2); // stagger odd columns
+            if (gx % 2 !== 0) py += (HEX_H / 2); 
             return { x: px + (HEX_W/2), y: py + (HEX_H/2) };
         }
 
@@ -184,30 +184,10 @@
             }
         }
 
-        function findOracle(idSnippet) {
-            let result = null;
-            function search(obj) {
-                if (!obj || typeof obj !== 'object' || result) return;
-                if (obj._id && obj._id.includes(idSnippet)) { result = obj; return; }
-                for (let key in obj) search(obj[key]);
-            }
-            search(window.datasworn);
-            return result;
-        }
-
         function rollOracle(idSnippet, fallback = "") {
-            const oracle = findOracle(idSnippet);
-            let rows = null;
-            if (oracle) rows = oracle.rows || oracle.table || oracle.entries;
-            if (!rows) return fallback;
-            
-            const roll = Math.floor(Math.random() * 100) + 1;
-            const row = rows.find(r => roll >= (r.floor || r.min || 1) && roll <= (r.ceiling || r.max || 100));
-            return row ? (row.text || row.result || row.name || fallback) : fallback;
+            return window.dataswornCore ? window.dataswornCore.rollOracle(idSnippet, fallback) : fallback;
         }
 
-        // --- EDITABLE UI HOOK ---
-        // Allows clicking on any generated text to edit and save it globally
         window.editSectorField = async function(fieldPath, newValue, isSettlement = false, settlementIndex = null) {
             if(!activeSector) return;
             
@@ -222,7 +202,7 @@
             statusMsg.innerText = "UPLINKING...";
             await window.gLink.saveSectorServer(window.charId, activeSector.id, activeSector.name, JSON.stringify(activeSector));
             statusMsg.innerText = "STANDBY";
-            refreshArchiveList(); // Name might have changed!
+            refreshArchiveList(); 
         };
 
         window.generateSector = async function() {
@@ -235,13 +215,12 @@
             let sName = rollOracle("sector_name", "");
             if (!sName || sName === "") sName = secPrefix[Math.floor(Math.random()*secPrefix.length)] + " " + secSuffix[Math.floor(Math.random()*secSuffix.length)];
 
-            const bounds = { w: 12, h: 8 }; // Internal abstract grid
+            const bounds = { w: 12, h: 8 }; 
             const minDistance = 2;
 
             const sector = {
                 id: 'sec_' + Date.now(), 
-                name: sName,
-                region: region.toUpperCase(),
+                name: sName, region: region.toUpperCase(),
                 trouble: rollOracle("sector_trouble", "Space is vast and unforgiving."),
                 settlements: [], passages: [], connection: null,
                 ship: { x: 0, y: 0 }
@@ -260,9 +239,6 @@
                 } while (!valid && attempts < 100);
 
                 const loc = rollOracle("settlement_location", "Deep Space Station");
-                let cName = rollOracle("character_name", "");
-                if(!cName) cName = charNames[Math.floor(Math.random()*charNames.length)];
-
                 sector.settlements.push({
                     id: i, x: x, y: y,
                     name: rollOracle("settlement_name", `Outpost ${i+1}`),
@@ -346,7 +322,6 @@
                 return;
             }
 
-            // Draw Editable Sidebar UI
             let html = `
                 <div class="data-card" style="border-color: #fbbf24;">
                     <div class="data-title editable" contenteditable="true" spellcheck="false" onblur="editSectorField('name', this.innerText)">${activeSector.name}</div>
@@ -377,7 +352,6 @@
                     </div>
                 `;
 
-                // Draw Tokens to Hex Grid
                 const token = document.createElement('div');
                 token.className = 'poi-token';
                 const pos = getHexPixel(s.x, s.y);
@@ -411,7 +385,6 @@
                 passagesLayer.appendChild(line);
             });
 
-            // Draw Ship Token
             shipElement = document.createElement('div');
             shipElement.id = 'ship-token';
             const shipPos = getHexPixel(activeSector.ship.x, activeSector.ship.y);
@@ -419,31 +392,68 @@
             shipElement.style.top = shipPos.y + 'px';
             contentLayer.appendChild(shipElement);
 
-            shipElement.onmousedown = () => isDragging = true;
+            shipElement.onmousedown = () => { 
+                isDragging = true; 
+                dragStartX = parseFloat(shipElement.style.left);
+                dragStartY = parseFloat(shipElement.style.top);
+            };
         }
 
-        // --- HEX GRID DRAG & SNAP LOGIC ---
+        // --- RULER & DRAG LOGIC ---
         viewport.addEventListener('mousemove', (e) => {
             if (!isDragging || !shipElement) return;
             const rect = viewport.getBoundingClientRect();
-            shipElement.style.left = (e.clientX - rect.left) + 'px';
-            shipElement.style.top = (e.clientY - rect.top) + 'px';
+            const rawX = e.clientX - rect.left;
+            const rawY = e.clientY - rect.top;
+
+            shipElement.style.left = rawX + 'px';
+            shipElement.style.top = rawY + 'px';
+
+            // Draw Ruler
+            rulerLine.setAttribute('x1', dragStartX);
+            rulerLine.setAttribute('y1', dragStartY);
+            rulerLine.setAttribute('x2', rawX);
+            rulerLine.setAttribute('y2', rawY);
+            rulerLine.style.display = 'block';
+
+            // Calculate Distance in Hexes
+            const distPx = Math.hypot(rawX - dragStartX, rawY - dragStartY);
+            const distHex = (distPx / HEX_W).toFixed(1); 
+
+            // Position text in middle of line
+            const midX = (dragStartX + rawX) / 2;
+            const midY = (dragStartY + rawY) / 2;
+
+            rulerText.setAttribute('x', midX);
+            rulerText.setAttribute('y', midY);
+            rulerText.textContent = distHex + ' Units';
+            rulerText.style.display = 'block';
+
+            // Draw background behind text
+            rulerBg.setAttribute('x', midX - 35);
+            rulerBg.setAttribute('y', midY - 10);
+            rulerBg.setAttribute('width', 70);
+            rulerBg.setAttribute('height', 20);
+            rulerBg.style.display = 'block';
         });
 
         viewport.addEventListener('mouseup', async (e) => {
             if (!isDragging || !activeSector) return;
             isDragging = false;
             
+            // Hide Ruler Elements
+            rulerLine.style.display = 'none';
+            rulerText.style.display = 'none';
+            rulerBg.style.display = 'none';
+            
             const rect = viewport.getBoundingClientRect();
             const rawX = e.clientX - rect.left;
             const rawY = e.clientY - rect.top;
 
-            // Nearest Neighbor calculation for Hex Centers
             let bestDist = Infinity;
             let bestCoord = { x: activeSector.ship.x, y: activeSector.ship.y };
             let bestPixel = { x: rawX, y: rawY };
 
-            // Check grid bounds (0-15x, 0-10y) for nearest hex center
             for(let gx=0; gx<=15; gx++) {
                 for(let gy=0; gy<=10; gy++) {
                     const hPos = getHexPixel(gx, gy);
@@ -459,7 +469,6 @@
             activeSector.ship.x = bestCoord.x;
             activeSector.ship.y = bestCoord.y;
 
-            // Snap Token
             shipElement.style.left = bestPixel.x + 'px';
             shipElement.style.top = bestPixel.y + 'px';
 
@@ -468,7 +477,12 @@
             statusMsg.innerText = "STANDBY";
         });
 
-        viewport.addEventListener('mouseleave', () => { isDragging = false; });
+        viewport.addEventListener('mouseleave', () => { 
+            isDragging = false; 
+            rulerLine.style.display = 'none';
+            rulerText.style.display = 'none';
+            rulerBg.style.display = 'none';
+        });
 
         initMap();
     })();
