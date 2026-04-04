@@ -26,8 +26,7 @@
         #map-viewport { 
             flex-grow: 1; position: relative; overflow: hidden;
             background-color: #020204;
-            background-image: url("data:image/svg+xml,%3Csvg width='60' height='103.923' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.981 15v30L30 60 4.019 45V15zm0 51.961l25.981 15v30L30 111.961 4.019 96.961v-30z' fill='none' stroke='rgba(0, 255, 153, 0.08)' stroke-width='1'/%3E%3C/svg%3E");
-            background-size: 60px 103.923px;
+            /* Background image removed to prevent ghost-grid snapping bugs */
         }
 
         #starscape { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
@@ -89,6 +88,7 @@
 
     <div id="map-viewport">
         <div id="starscape"></div>
+        <svg id="grid-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2;"></svg>
         <svg id="passages-layer"></svg>
         <div id="map-content"></div>
         
@@ -110,13 +110,12 @@
         const archiveSelect = document.getElementById('archive-select');
         const statusMsg = document.getElementById('map-status');
         
-        // Ruler SVG Elements
         const rulerLine = document.getElementById('ruler-line');
         const rulerBg = document.getElementById('ruler-bg');
         const rulerText = document.getElementById('ruler-text');
         
-        const HEX_W = 60; 
-        const HEX_H = 103.923;
+        // Single source of truth for grid math
+        const HEX_RADIUS = 30; 
         
         let activeSector = null;
         let isDragging = false;
@@ -137,6 +136,7 @@
         window.initMap = async function() {
             try {
                 generateStarscape();
+                drawGrid(); // Draw the visual grid to match the math
                 statusMsg.innerText = "LINKING CORE...";
                 if(window.dataswornReady) await window.dataswornReady;
                 await refreshArchiveList();
@@ -168,11 +168,39 @@
             }
         }
 
+        // Unified mathematical pixel conversion
         function getHexPixel(gx, gy) {
-            const px = gx * (HEX_W * 0.75);
-            let py = gy * HEX_H;
-            if (gx % 2 !== 0) py += (HEX_H / 2); 
-            return { x: px + (HEX_W/2), y: py + (HEX_H/2) };
+            const hexH = HEX_RADIUS * Math.sqrt(3); 
+            const px = gx * (HEX_RADIUS * 1.5); 
+            let py = gy * hexH;
+            if (gx % 2 !== 0) py += (hexH / 2); 
+            return { x: px + HEX_RADIUS, y: py + (hexH / 2) };
+        }
+
+        // Draws the visual lines to perfectly align with the math
+        function drawGrid() {
+            const gridLayer = document.getElementById('grid-layer');
+            gridLayer.innerHTML = '';
+            
+            for(let gx=0; gx<=35; gx++) {
+                for(let gy=0; gy<=25; gy++) {
+                    const center = getHexPixel(gx, gy);
+                    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+                    
+                    let points = [];
+                    for(let i=0; i<6; i++) {
+                        const angle_rad = (Math.PI / 180) * (60 * i);
+                        const px = center.x + HEX_RADIUS * Math.cos(angle_rad);
+                        const py = center.y + HEX_RADIUS * Math.sin(angle_rad);
+                        points.push(`${px},${py}`);
+                    }
+                    poly.setAttribute('points', points.join(' '));
+                    poly.setAttribute('fill', 'none');
+                    poly.setAttribute('stroke', 'rgba(0, 255, 153, 0.08)');
+                    poly.setAttribute('stroke-width', '1');
+                    gridLayer.appendChild(poly);
+                }
+            }
         }
 
         async function refreshArchiveList() {
@@ -372,7 +400,7 @@
 
                 let pos2;
                 if (p[1] === "OFF_MAP") {
-                    pos2 = { x: pos1.x + (HEX_W * 3), y: pos1.y - (HEX_H * 2) };
+                    pos2 = { x: pos1.x + (HEX_RADIUS * 6), y: pos1.y - (HEX_RADIUS * 4) };
                 } else {
                     const s2 = activeSector.settlements.find(x => x.id === p[1]);
                     pos2 = getHexPixel(s2.x, s2.y);
@@ -399,7 +427,6 @@
             };
         }
 
-        // --- RULER & DRAG LOGIC ---
         viewport.addEventListener('mousemove', (e) => {
             if (!isDragging || !shipElement) return;
             const rect = viewport.getBoundingClientRect();
@@ -409,18 +436,16 @@
             shipElement.style.left = rawX + 'px';
             shipElement.style.top = rawY + 'px';
 
-            // Draw Ruler
             rulerLine.setAttribute('x1', dragStartX);
             rulerLine.setAttribute('y1', dragStartY);
             rulerLine.setAttribute('x2', rawX);
             rulerLine.setAttribute('y2', rawY);
             rulerLine.style.display = 'block';
 
-            // Calculate Distance in Hexes
             const distPx = Math.hypot(rawX - dragStartX, rawY - dragStartY);
-            const distHex = (distPx / HEX_W).toFixed(1); 
+            const hexSizePx = HEX_RADIUS * Math.sqrt(3); 
+            const distHex = (distPx / hexSizePx).toFixed(1); 
 
-            // Position text in middle of line
             const midX = (dragStartX + rawX) / 2;
             const midY = (dragStartY + rawY) / 2;
 
@@ -429,7 +454,6 @@
             rulerText.textContent = distHex + ' Units';
             rulerText.style.display = 'block';
 
-            // Draw background behind text
             rulerBg.setAttribute('x', midX - 35);
             rulerBg.setAttribute('y', midY - 10);
             rulerBg.setAttribute('width', 70);
@@ -441,7 +465,6 @@
             if (!isDragging || !activeSector) return;
             isDragging = false;
             
-            // Hide Ruler Elements
             rulerLine.style.display = 'none';
             rulerText.style.display = 'none';
             rulerBg.style.display = 'none';
@@ -454,8 +477,8 @@
             let bestCoord = { x: activeSector.ship.x, y: activeSector.ship.y };
             let bestPixel = { x: rawX, y: rawY };
 
-            for(let gx=0; gx<=15; gx++) {
-                for(let gy=0; gy<=10; gy++) {
+            for(let gx=0; gx<=35; gx++) {
+                for(let gy=0; gy<=25; gy++) {
                     const hPos = getHexPixel(gx, gy);
                     const dist = Math.hypot(hPos.x - rawX, hPos.y - rawY);
                     if(dist < bestDist) {
