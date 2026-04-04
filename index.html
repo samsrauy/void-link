@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <title>VOID-LINK // OS</title>
     <link rel="stylesheet" href="css/style.css">
-    <script src="js/sync.js"></script>
     <script src="js/datasworn.js"></script>
+    <script src="js/sync.js"></script>
     
     <style>
         :root { --neon: #00ff9d; --bg: #050508; --panel: #0b0d12; --border: #1a1c23; }
@@ -20,10 +20,30 @@
         /* TERMINAL GRID */
         #terminal-grid { display: none; grid-template-columns: 380px 1fr; grid-template-rows: 60px 1fr 350px; height: 100vh; gap: 2px; background: var(--border); }
         .header-bar { grid-column: 1 / -1; background: var(--panel); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-bottom: 1px solid var(--neon); }
-        .module-frame { background: var(--panel); overflow-y: auto; }
+        .module-frame { background: var(--panel); overflow-y: auto; position: relative; }
         #frame-char { grid-row: 2 / 4; }
         #frame-map { grid-column: 2; grid-row: 2; }
         #frame-journal { grid-column: 2; grid-row: 3; border-top: 1px solid var(--border); }
+
+        /* SLIDE-OUT TOOLS DRAWER */
+        #menu-btn { cursor: pointer; background: #161922; border: 1px solid var(--neon); color: var(--neon); padding: 5px 15px; font-weight: bold; transition: 0.2s; }
+        #menu-btn:hover { background: var(--neon); color: #000; }
+        
+        #tools-drawer {
+            position: fixed; top: 60px; right: -600px; width: 600px; bottom: 0;
+            background: rgba(11, 13, 18, 0.98); border-left: 2px solid var(--neon);
+            transition: right 0.3s ease; z-index: 1000; display: flex; flex-direction: column;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+        }
+        #tools-drawer.open { right: 0; }
+        
+        .drawer-nav { display: flex; background: #161922; border-bottom: 1px solid #454d5d; }
+        .drawer-tab { flex: 1; padding: 15px; background: transparent; color: #aab; border: none; cursor: pointer; font-family: 'Share Tech Mono', monospace; text-transform: uppercase; border-bottom: 2px solid transparent; }
+        .drawer-tab:hover { color: var(--neon); background: rgba(0,255,153,0.05); }
+        .drawer-tab.active { color: var(--neon); border-bottom: 2px solid var(--neon); font-weight: bold; }
+        
+        .drawer-content { flex-grow: 1; overflow-y: auto; display: none; }
+        .drawer-content.active { display: block; height: 100%; }
     </style>
 </head>
 <body>
@@ -42,19 +62,30 @@
     <div id="terminal-grid">
         <div class="header-bar">
             <div id="char-display" style="font-weight: bold; color: var(--neon);">PILOT: ---</div>
-            <div style="letter-spacing: 3px;">VOID-LINK // NAV-OS v4.0</div>
+            <div style="letter-spacing: 3px; opacity: 0.5;">VOID-LINK // NAV-OS v4.0</div>
+            <button id="menu-btn" onclick="toggleMenu()">☰ MODULES</button>
         </div>
         <div id="frame-char" class="module-frame"></div>
         <div id="frame-map" class="module-frame"></div>
         <div id="frame-journal" class="module-frame"></div>
     </div>
 
+    <div id="tools-drawer">
+        <div class="drawer-nav">
+            <button class="drawer-tab active" onclick="switchDrawerTab('frame-compendium', this)">Compendium</button>
+            <button class="drawer-tab" onclick="switchDrawerTab('frame-assets', this)">Asset Repo</button>
+            <button class="drawer-tab" onclick="switchDrawerTab('frame-tracker', this)">My Assets</button>
+            <button class="drawer-tab" style="flex: 0.2; color:#ff0055;" onclick="toggleMenu()">[X]</button>
+        </div>
+        <div id="frame-compendium" class="drawer-content active module-frame"></div>
+        <div id="frame-assets" class="drawer-content module-frame"></div>
+        <div id="frame-tracker" class="drawer-content module-frame"></div>
+    </div>
+
     <script>
-        // GLOBAL VARIABLE SETUP
         const urlParams = new URLSearchParams(window.location.search);
         window.charId = urlParams.get('id');
 
-        // Boot if ID exists in URL
         if (window.charId) {
             bootTerminal(window.charId);
         }
@@ -63,12 +94,20 @@
             const name = document.getElementById('callsign-input').value.trim();
             const server = document.getElementById('server-url-input').value.trim();
             if (name) {
-                // Save the server URL to local browser storage
                 if (server) localStorage.setItem('voidLinkServer', server);
-                
-                // Reload the page with the ID in the URL
                 window.location.href = `?id=${encodeURIComponent(name)}`;
             }
+        }
+
+        function toggleMenu() {
+            document.getElementById('tools-drawer').classList.toggle('open');
+        }
+
+        function switchDrawerTab(targetId, btnEl) {
+            document.querySelectorAll('.drawer-content').forEach(d => d.classList.remove('active'));
+            document.querySelectorAll('.drawer-tab').forEach(b => b.classList.remove('active'));
+            document.getElementById(targetId).classList.add('active');
+            btnEl.classList.add('active');
         }
 
         async function loadModule(id, path) {
@@ -78,7 +117,6 @@
                 const target = document.getElementById(id);
                 target.innerHTML = html;
                 
-                // Standard revival for same-domain module scripts
                 Array.from(target.querySelectorAll('script')).forEach(old => {
                     const n = document.createElement('script');
                     if (old.src) n.src = old.src;
@@ -95,11 +133,18 @@
             document.getElementById('terminal-grid').style.display = 'grid';
             document.getElementById('char-display').innerText = `PILOT: ${id.toUpperCase()}`;
 
-            // Fetch modules
+            // Load main UI
             await Promise.all([
                 loadModule('frame-char', 'character-sheet/character-sheet.html'),
                 loadModule('frame-map', 'map/map.html'),
                 loadModule('frame-journal', 'journal/journal.html')
+            ]);
+
+            // Load background drawer UI
+            await Promise.all([
+                loadModule('frame-compendium', 'compendium/compendium.html'),
+                loadModule('frame-assets', 'asset-browser/asset-browser.html'),
+                loadModule('frame-tracker', 'asset-tracker/asset-tracker.html')
             ]);
         }
     </script>
