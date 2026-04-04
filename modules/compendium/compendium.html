@@ -39,7 +39,6 @@
         window.initCompendium = async function() {
             try {
                 await window.dataswornReady;
-                // Grab data from global window instead of window.parent
                 fullData = findDataswornItems(window.datasworn, currentType);
                 filterCompendium();
             } catch (err) {
@@ -95,13 +94,12 @@
         }
 
         window.consultNeuralOracle = async function(name, id) {
-            // Using global triggerNeuralRoll from sync.js
             const roll = Math.floor(Math.random() * 100) + 1;
             const result = `Oracle [${name}] rolled ${roll}.`;
             
-            // Logic to actually find the row in datasworn can go here
             alert(result);
-            await saveStat(window.charId, "history_entry", result);
+            // Updated to write directly to the Game Log
+            await window.gLink.logServer(window.charId, result);
         };
 
         initCompendium();
