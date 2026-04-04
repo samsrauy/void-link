@@ -60,42 +60,31 @@ function createJsonResponse(responseObject) {
 
 function saveStat(id, field, val) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let stats = ss.getSheetByName("Stat");
-  
-  // 1. Auto-create sheet if missing
-  if (!stats) {
-    stats = ss.insertSheet("Stat");
-    stats.appendRow(["id"]);
-  }
+  const stats = ss.getSheetByName("Stat");
+  if (!stats) return "ERR_SHEET_NOT_FOUND";
 
-  let data = stats.getDataRange().getValues();
-  if (data.length === 0) {
-    stats.appendRow(["id"]);
-    data = [["id"]];
-  }
-
-  let headers = data[0];
+  const data = stats.getDataRange().getValues();
+  let headers = data[0] || [];
   let colIdx = headers.indexOf(field);
   
-  // 2. Auto-create column if it doesn't exist!
+  // --- FIX: Dynamic Column Creation ---
+  // If the header doesn't exist, create it at the end of the first row
   if (colIdx === -1) {
-    colIdx = headers.length;
-    stats.getRange(1, colIdx + 1).setValue(field);
-    headers.push(field);
-    data = stats.getDataRange().getValues(); // Refresh data
+    colIdx = headers.length; 
+    stats.getRange(1, colIdx + 1).setValue(field); 
+    headers.push(field); 
   }
+  // ------------------------------------
 
   const searchId = id.toString().trim().toLowerCase();
   let rowIdx = -1;
 
-  // 3. Find character row
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] && data[i][0].toString().trim().toLowerCase() === searchId) {
+    if (data[i][0].toString().trim().toLowerCase() === searchId) {
       rowIdx = i + 1; break; 
     }
   }
 
-  // 4. Update or Create Row
   if (rowIdx !== -1) {
     stats.getRange(rowIdx, colIdx + 1).setValue(val);
   } else {
