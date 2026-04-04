@@ -53,7 +53,6 @@
         const catSelect = document.getElementById('category-select');
 
         try {
-            // Wait for the global Datasworn promise from datasworn.js
             await window.dataswornReady;
             const data = window.datasworn;
 
@@ -61,13 +60,11 @@
                 throw new Error("Datasworn Data Core is empty or malformed.");
             }
 
-            // Populate Categories
             const collections = data.asset_collections;
             catSelect.innerHTML = Object.keys(collections).sort().map(key => 
                 `<option value="${key}">${collections[key].name.toUpperCase()}</option>`
             ).join('');
 
-            // Global render function
             window.renderAssets = (catKey) => {
                 const assets = collections[catKey].contents;
                 grid.innerHTML = Object.values(assets).map(asset => {
@@ -93,7 +90,6 @@
                 }).join('');
             };
 
-            // Initial Render
             renderAssets(catSelect.value);
 
         } catch (err) {
@@ -101,19 +97,13 @@
             grid.innerHTML = `<div style="color:#ff0055; padding:20px;">DETACHED FROM CORE: ${err.message}</div>`;
         }
 
-        /**
-         * UPLINK TO PERSISTENT MEMORY
-         */
         window.claimAsset = async function(assetId, name) {
             if (confirm(`Authorize installation of ${name}?`)) {
                 document.getElementById('status-msg').innerText = "TRANSMITTING...";
                 
-                // Uses the global saveStat from sync.js
-                await saveStat(window.charId, "history_entry", `LOG: Installed Asset [${name}]`);
+                // Write installation to the Game Log Doc
+                await window.gLink.logServer(window.charId, `Installed Asset: [${name}]`);
                 
-                // In a full build, you'd also save to a JSON array of owned assets
-                // await saveStat(window.charId, "owned_assets", ...);
-
                 document.getElementById('status-msg').innerText = "MANIFEST UPDATED";
                 alert(`${name} successfully uplinked to character profile.`);
             }
