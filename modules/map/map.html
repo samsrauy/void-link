@@ -2,9 +2,8 @@
     <style>
         #map-scope { width: 100%; height: 100%; background: #050508; color: #00ff9d; font-family: 'Exo 2', sans-serif; display: flex; position: relative; overflow: hidden; }
         
-        /* Tactical Sidebar */
         #map-scope #tactical-sidebar { 
-            width: 340px; background: rgba(11, 13, 18, 0.95); border-right: 1px solid #1a1c23; 
+            width: 380px; background: rgba(11, 13, 18, 0.95); border-right: 1px solid #1a1c23; 
             display: flex; flex-direction: column; z-index: 20; padding: 20px; box-sizing: border-box;
             overflow-y: auto; font-size: 0.85rem;
         }
@@ -15,55 +14,61 @@
             margin-bottom: 10px; font-family: 'Share Tech Mono', monospace; cursor: pointer; text-transform: uppercase;
         }
         #map-scope button:hover { background: #00ff9d; color: #000; }
-        #map-scope select:disabled, #map-scope button:disabled { opacity: 0.5; cursor: not-allowed; }
         
         #map-scope .data-card { background: #1a1c23; border: 1px solid #454d5d; padding: 10px; margin-bottom: 10px; border-left: 3px solid #00ff9d; }
         #map-scope .data-title { font-weight: bold; color: #bcdee7; font-family: 'Share Tech Mono'; margin-bottom: 5px; font-size: 1rem; }
         #map-scope .data-text { color: #aab; line-height: 1.4; font-size: 0.8rem; margin-bottom: 4px; }
         #map-scope .tag { font-size: 0.6rem; background: #161922; padding: 2px 6px; border-radius: 4px; border: 1px solid #454d5d; display: inline-block; margin-right: 4px; color: #ff0055;}
 
-        /* Main Viewport & Grid */
+        /* Editable Fields Styling */
+        #map-scope .editable { border-bottom: 1px dashed #454d5d; cursor: text; outline: none; transition: 0.2s; display: inline-block; min-width: 20px; }
+        #map-scope .editable:focus { border-bottom-color: #00ff9d; background: rgba(0,255,153,0.1); }
+
+        /* Main Viewport & HEX Grid */
         #map-viewport { 
             flex-grow: 1; position: relative; overflow: hidden;
-            background-image: 
-                linear-gradient(rgba(0, 255, 153, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 255, 153, 0.05) 1px, transparent 1px);
-            background-size: 60px 60px;
+            background-color: #020204;
+            /* Precise Hexagon SVG Grid */
+            background-image: url("data:image/svg+xml,%3Csvg width='60' height='103.923' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.981 15v30L30 60 4.019 45V15zm0 51.961l25.981 15v30L30 111.961 4.019 96.961v-30z' fill='none' stroke='rgba(0, 255, 153, 0.08)' stroke-width='1'/%3E%3C/svg%3E");
+            background-size: 60px 103.923px;
         }
+
+        /* Dynamic Starscape Layer */
+        #starscape { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
         
-        #map-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        #map-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
         
         /* Map Tokens */
         .poi-token { 
-            position: absolute; width: 20px; height: 20px; border-radius: 50%; 
+            position: absolute; width: 16px; height: 16px; border-radius: 50%; 
             background: #000; border: 2px solid #00ff9d; transform: translate(-50%, -50%);
             display: flex; align-items: center; justify-content: center;
-            font-size: 10px; cursor: pointer; transition: 0.2s; box-shadow: 0 0 10px rgba(0,255,153,0.2);
-            z-index: 10; pointer-events: auto;
+            cursor: pointer; transition: 0.2s; box-shadow: 0 0 10px rgba(0,255,153,0.3);
+            pointer-events: auto;
         }
         .poi-token:hover { transform: translate(-50%, -50%) scale(1.5); box-shadow: 0 0 15px #00ff9d; }
         .poi-label {
-            position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+            position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.8); padding: 2px 5px; font-size: 10px;
             font-family: 'Share Tech Mono'; color: #fff; border: 1px solid #454d5d; pointer-events: none;
-            white-space: nowrap;
+            white-space: nowrap; border-radius: 2px;
         }
 
         /* Starship Token */
         #ship-token {
-            position: absolute; width: 24px; height: 24px; 
+            position: absolute; width: 20px; height: 20px; 
             background: rgba(0, 255, 153, 0.2); border: 2px solid #fff; 
-            transform: translate(-50%, -50%); z-index: 50; cursor: grab;
+            transform: translate(-50%, -50%); cursor: grab;
             display: flex; align-items: center; justify-content: center;
             clip-path: polygon(50% 0%, 100% 100%, 50% 80%, 0% 100%);
             box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
-            pointer-events: auto;
+            pointer-events: auto; transition: transform 0.1s;
         }
-        #ship-token:active { cursor: grabbing; border-color: #ff0055; background: rgba(255,0,85,0.3); }
+        #ship-token:active { cursor: grabbing; border-color: #ff0055; background: rgba(255,0,85,0.3); transform: translate(-50%, -50%) scale(1.2); }
 
         /* SVG Lines for Passages */
         #passages-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
-        .passage-line { stroke: rgba(0, 255, 153, 0.4); stroke-width: 2; stroke-dasharray: 4; fill: none; }
+        .passage-line { stroke: rgba(0, 255, 153, 0.3); stroke-width: 2; stroke-dasharray: 4; fill: none; }
     </style>
 
     <div id="tactical-sidebar">
@@ -91,6 +96,7 @@
     </div>
 
     <div id="map-viewport">
+        <div id="starscape"></div>
         <svg id="passages-layer"></svg>
         <div id="map-content"></div>
     </div>
@@ -106,7 +112,10 @@
         const archiveSelect = document.getElementById('archive-select');
         const statusMsg = document.getElementById('map-status');
         
-        const GRID_SCALE = 60; 
+        // Hex Grid Math Variables
+        const HEX_W = 60; 
+        const HEX_H = 103.923;
+        
         let activeSector = null;
         let isDragging = false;
         let shipElement = null;
@@ -117,10 +126,16 @@
             'expanse':  { settlements: 2, passages: 1 }
         };
 
+        // Fallback Name Generators
+        const charNames = ["Jax", "Kaelen", "Lyra", "Voss", "Sira", "Tark", "Rian", "Cora", "Dax", "Elara", "Zane", "Nova", "Kian"];
+        const secPrefix = ["Aegis", "Vanguard", "Helios", "Erebus", "Corsair", "Nova", "Obsidian", "Cygnus", "Talos", "Onyx"];
+        const secSuffix = ["Reach", "Expanse", "Drift", "Cluster", "Sector", "Nebula", "Void", "Abyss", "Veil"];
+
         window.initMap = async function() {
             try {
+                generateStarscape();
                 statusMsg.innerText = "LINKING CORE...";
-                await window.dataswornReady;
+                if(window.dataswornReady) await window.dataswornReady;
                 await refreshArchiveList();
                 statusMsg.innerText = "STANDBY";
             } catch (err) {
@@ -128,6 +143,37 @@
                 statusMsg.innerText = "LINK FAILED";
             }
         };
+
+        function generateStarscape() {
+            const bg = document.getElementById('starscape');
+            bg.innerHTML = '';
+            // Generate Nebula Gradient
+            const nebX = Math.floor(Math.random() * 100);
+            const nebY = Math.floor(Math.random() * 100);
+            bg.style.backgroundImage = `radial-gradient(circle at ${nebX}% ${nebY}%, rgba(0, 150, 255, 0.05) 0%, transparent 60%)`;
+            
+            // Generate Stars
+            for(let i=0; i<100; i++) {
+                const star = document.createElement('div');
+                const size = Math.random() * 2 + 1;
+                star.style.position = 'absolute';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.width = size + 'px';
+                star.style.height = size + 'px';
+                star.style.backgroundColor = `rgba(255,255,255,${Math.random() * 0.8 + 0.2})`;
+                star.style.borderRadius = '50%';
+                bg.appendChild(star);
+            }
+        }
+
+        // Translates abstract coordinates into perfect CSS Hex positions
+        function getHexPixel(gx, gy) {
+            const px = gx * (HEX_W * 0.75);
+            let py = gy * HEX_H;
+            if (gx % 2 !== 0) py += (HEX_H / 2); // stagger odd columns
+            return { x: px + (HEX_W/2), y: py + (HEX_H/2) };
+        }
 
         async function refreshArchiveList() {
             const list = await window.gLink.getSectorListServer(window.charId);
@@ -138,7 +184,6 @@
             }
         }
 
-        // Improved Oracle Finder for Schema Variations
         function findOracle(idSnippet) {
             let result = null;
             function search(obj) {
@@ -153,10 +198,7 @@
         function rollOracle(idSnippet, fallback = "") {
             const oracle = findOracle(idSnippet);
             let rows = null;
-            if (oracle) {
-                // Supports both v1.0 and v2.0 schema structures
-                rows = oracle.rows || oracle.table || oracle.entries;
-            }
+            if (oracle) rows = oracle.rows || oracle.table || oracle.entries;
             if (!rows) return fallback;
             
             const roll = Math.floor(Math.random() * 100) + 1;
@@ -164,12 +206,24 @@
             return row ? (row.text || row.result || row.name || fallback) : fallback;
         }
 
-        // Native Space Opera random generator just in case Datasworn JSON is unresponsive
-        function generateFallbackName() {
-            const prefixes = ["Aegis", "Vanguard", "Helios", "Erebus", "Corsair", "Nova", "Obsidian", "Cygnus", "Talos", "Onyx"];
-            const suffixes = ["Reach", "Expanse", "Drift", "Cluster", "Sector", "Nebula", "Void", "Abyss", "Veil"];
-            return prefixes[Math.floor(Math.random() * prefixes.length)] + " " + suffixes[Math.floor(Math.random() * suffixes.length)];
-        }
+        // --- EDITABLE UI HOOK ---
+        // Allows clicking on any generated text to edit and save it globally
+        window.editSectorField = async function(fieldPath, newValue, isSettlement = false, settlementIndex = null) {
+            if(!activeSector) return;
+            
+            if (isSettlement && settlementIndex !== null) {
+                activeSector.settlements[settlementIndex][fieldPath] = newValue;
+            } else {
+                let parts = fieldPath.split('.');
+                if(parts.length === 1) activeSector[parts[0]] = newValue;
+                else if (parts.length === 2) activeSector[parts[0]][parts[1]] = newValue;
+            }
+
+            statusMsg.innerText = "UPLINKING...";
+            await window.gLink.saveSectorServer(window.charId, activeSector.id, activeSector.name, JSON.stringify(activeSector));
+            statusMsg.innerText = "STANDBY";
+            refreshArchiveList(); // Name might have changed!
+        };
 
         window.generateSector = async function() {
             if (activeSector && !confirm("Initialize new sector scan? Current view will be replaced.")) return;
@@ -178,27 +232,23 @@
             const rules = REGION_RULES[region];
             statusMsg.innerText = "GENERATING...";
 
-            // Robust Sector Name Generation
             let sName = rollOracle("sector_name", "");
-            if (!sName || sName === "") sName = generateFallbackName();
+            if (!sName || sName === "") sName = secPrefix[Math.floor(Math.random()*secPrefix.length)] + " " + secSuffix[Math.floor(Math.random()*secSuffix.length)];
+
+            const bounds = { w: 12, h: 8 }; // Internal abstract grid
+            const minDistance = 2;
 
             const sector = {
                 id: 'sec_' + Date.now(), 
                 name: sName,
                 region: region.toUpperCase(),
-                trouble: rollOracle("sector_trouble", "Unknown Threat"),
-                settlements: [],
-                passages: [],
-                connection: null,
+                trouble: rollOracle("sector_trouble", "Space is vast and unforgiving."),
+                settlements: [], passages: [], connection: null,
                 ship: { x: 0, y: 0 }
             };
 
-            const bounds = { w: 10, h: 8 };
-            const minDistance = 2;
-
             for (let i = 0; i < rules.settlements; i++) {
-                let x, y, valid;
-                let attempts = 0;
+                let x, y, valid; let attempts = 0;
                 do {
                     valid = true;
                     x = Math.floor(Math.random() * bounds.w) + 1;
@@ -209,17 +259,17 @@
                     attempts++;
                 } while (!valid && attempts < 100);
 
-                const loc = rollOracle("settlement_location", "Orbital");
-                
+                const loc = rollOracle("settlement_location", "Deep Space Station");
+                let cName = rollOracle("character_name", "");
+                if(!cName) cName = charNames[Math.floor(Math.random()*charNames.length)];
+
                 sector.settlements.push({
-                    id: i,
-                    name: rollOracle("settlement_name", `Outpost ${i}`),
-                    x: x, y: y,
+                    id: i, x: x, y: y,
+                    name: rollOracle("settlement_name", `Outpost ${i+1}`),
                     location: loc,
-                    population: rollOracle("population", "Few"),
+                    population: rollOracle("population", "Hundreds"),
                     authority: rollOracle("authority", "None"),
                     projects: rollOracle("settlement_projects", "Survival"),
-                    star: rollOracle("stellar_object", "Main Sequence Star"),
                     planet: loc.toLowerCase().includes("planet") ? rollOracle("planet_class", "Rocky World") : "N/A"
                 });
             }
@@ -238,8 +288,11 @@
                 passageCount++;
             }
 
+            let connName = rollOracle("character_name", "");
+            if(!connName) connName = charNames[Math.floor(Math.random()*charNames.length)];
+
             sector.connection = {
-                name: rollOracle("character_name", "Unknown Contact"),
+                name: connName,
                 role: rollOracle("character_role", "Scavenger"),
                 rank: "Dangerous",
                 home: sector.settlements[0].name
@@ -257,11 +310,9 @@
             sector.ship = { x: shipX, y: shipY };
 
             activeSector = sector;
-            renderSector(); // This populates the UI cards!
+            renderSector(); 
             
-            // Replaced the infoContainer overwrite with the subtle statusMsg update
             statusMsg.innerText = "UPLINKING...";
-            
             await window.gLink.saveSectorServer(window.charId, sector.id, sector.name, JSON.stringify(activeSector));
             await window.gLink.logServer(window.charId, `New Sector Charted: ${sector.name}`);
             
@@ -295,37 +346,43 @@
                 return;
             }
 
+            // Draw Editable Sidebar UI
             let html = `
                 <div class="data-card" style="border-color: #fbbf24;">
-                    <div class="data-title">${activeSector.name}</div>
+                    <div class="data-title editable" contenteditable="true" spellcheck="false" onblur="editSectorField('name', this.innerText)">${activeSector.name}</div>
                     <span class="tag">${activeSector.region}</span>
                 </div>
                 <div class="data-card" style="border-color: #ff0055;">
                     <div class="tag">SECTOR TROUBLE</div>
-                    <div class="data-text">${activeSector.trouble}</div>
+                    <div class="data-text editable" contenteditable="true" spellcheck="false" onblur="editSectorField('trouble', this.innerText)">${activeSector.trouble}</div>
                 </div>
                 <div class="data-card" style="border-color: #3b82f6;">
                     <div class="tag">LOCAL CONNECTION</div>
-                    <div class="data-text"><b>${activeSector.connection.name}</b> (${activeSector.connection.role})</div>
+                    <div class="data-text">
+                        <b class="editable" contenteditable="true" spellcheck="false" onblur="editSectorField('connection.name', this.innerText)">${activeSector.connection.name}</b> 
+                        (<span class="editable" contenteditable="true" spellcheck="false" onblur="editSectorField('connection.role', this.innerText)">${activeSector.connection.role}</span>)
+                    </div>
                     <div class="data-text">Rank: ${activeSector.connection.rank} | At: ${activeSector.connection.home}</div>
                 </div>
             `;
 
-            activeSector.settlements.forEach(s => {
+            activeSector.settlements.forEach((s, idx) => {
                 html += `
                     <div class="data-card">
-                        <div class="data-title">${s.name}</div>
+                        <div class="data-title editable" contenteditable="true" spellcheck="false" onblur="editSectorField('name', this.innerText, true, ${idx})">${s.name}</div>
                         <div class="data-text"><b>Loc:</b> ${s.location}</div>
-                        <div class="data-text"><b>Auth:</b> ${s.authority}</div>
-                        <div class="data-text"><b>Proj:</b> ${s.projects}</div>
+                        <div class="data-text"><b>Auth:</b> <span class="editable" contenteditable="true" spellcheck="false" onblur="editSectorField('authority', this.innerText, true, ${idx})">${s.authority}</span></div>
+                        <div class="data-text"><b>Proj:</b> <span class="editable" contenteditable="true" spellcheck="false" onblur="editSectorField('projects', this.innerText, true, ${idx})">${s.projects}</span></div>
                         ${s.planet !== 'N/A' ? `<div class="data-text" style="color:#fbbf24;"><b>Planet:</b> ${s.planet}</div>` : ''}
                     </div>
                 `;
 
+                // Draw Tokens to Hex Grid
                 const token = document.createElement('div');
                 token.className = 'poi-token';
-                token.style.left = (s.x * GRID_SCALE) + 'px';
-                token.style.top = (s.y * GRID_SCALE) + 'px';
+                const pos = getHexPixel(s.x, s.y);
+                token.style.left = pos.x + 'px';
+                token.style.top = pos.y + 'px';
                 token.innerHTML = `<div class="poi-label">${s.name}</div>`;
                 if (s.planet !== 'N/A') token.style.borderColor = "#fbbf24";
                 contentLayer.appendChild(token);
@@ -337,37 +394,35 @@
                 const s1 = activeSector.settlements.find(x => x.id === p[0]);
                 if (!s1) return;
 
-                const x1 = s1.x * GRID_SCALE;
-                const y1 = s1.y * GRID_SCALE;
+                const pos1 = getHexPixel(s1.x, s1.y);
 
-                let x2, y2;
+                let pos2;
                 if (p[1] === "OFF_MAP") {
-                    x2 = x1 + (GRID_SCALE * 3);
-                    y2 = y1 - (GRID_SCALE * 2);
+                    pos2 = { x: pos1.x + (HEX_W * 3), y: pos1.y - (HEX_H * 2) };
                 } else {
                     const s2 = activeSector.settlements.find(x => x.id === p[1]);
-                    x2 = s2.x * GRID_SCALE;
-                    y2 = s2.y * GRID_SCALE;
+                    pos2 = getHexPixel(s2.x, s2.y);
                 }
 
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', x1);
-                line.setAttribute('y1', y1);
-                line.setAttribute('x2', x2);
-                line.setAttribute('y2', y2);
+                line.setAttribute('x1', pos1.x); line.setAttribute('y1', pos1.y);
+                line.setAttribute('x2', pos2.x); line.setAttribute('y2', pos2.y);
                 line.setAttribute('class', 'passage-line');
                 passagesLayer.appendChild(line);
             });
 
+            // Draw Ship Token
             shipElement = document.createElement('div');
             shipElement.id = 'ship-token';
-            shipElement.style.left = (activeSector.ship.x * GRID_SCALE) + 'px';
-            shipElement.style.top = (activeSector.ship.y * GRID_SCALE) + 'px';
+            const shipPos = getHexPixel(activeSector.ship.x, activeSector.ship.y);
+            shipElement.style.left = shipPos.x + 'px';
+            shipElement.style.top = shipPos.y + 'px';
             contentLayer.appendChild(shipElement);
 
             shipElement.onmousedown = () => isDragging = true;
         }
 
+        // --- HEX GRID DRAG & SNAP LOGIC ---
         viewport.addEventListener('mousemove', (e) => {
             if (!isDragging || !shipElement) return;
             const rect = viewport.getBoundingClientRect();
@@ -380,14 +435,33 @@
             isDragging = false;
             
             const rect = viewport.getBoundingClientRect();
-            const gridX = Math.round((e.clientX - rect.left) / GRID_SCALE);
-            const gridY = Math.round((e.clientY - rect.top) / GRID_SCALE);
+            const rawX = e.clientX - rect.left;
+            const rawY = e.clientY - rect.top;
 
-            activeSector.ship.x = gridX;
-            activeSector.ship.y = gridY;
+            // Nearest Neighbor calculation for Hex Centers
+            let bestDist = Infinity;
+            let bestCoord = { x: activeSector.ship.x, y: activeSector.ship.y };
+            let bestPixel = { x: rawX, y: rawY };
 
-            shipElement.style.left = (gridX * GRID_SCALE) + 'px';
-            shipElement.style.top = (gridY * GRID_SCALE) + 'px';
+            // Check grid bounds (0-15x, 0-10y) for nearest hex center
+            for(let gx=0; gx<=15; gx++) {
+                for(let gy=0; gy<=10; gy++) {
+                    const hPos = getHexPixel(gx, gy);
+                    const dist = Math.hypot(hPos.x - rawX, hPos.y - rawY);
+                    if(dist < bestDist) {
+                        bestDist = dist;
+                        bestCoord = { x: gx, y: gy };
+                        bestPixel = hPos;
+                    }
+                }
+            }
+
+            activeSector.ship.x = bestCoord.x;
+            activeSector.ship.y = bestCoord.y;
+
+            // Snap Token
+            shipElement.style.left = bestPixel.x + 'px';
+            shipElement.style.top = bestPixel.y + 'px';
 
             statusMsg.innerText = "UPLINKING...";
             await window.gLink.saveSectorServer(window.charId, activeSector.id, activeSector.name, JSON.stringify(activeSector));
