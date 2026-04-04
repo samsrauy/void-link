@@ -8,7 +8,7 @@
             display: flex; flex-direction: column; z-index: 20; padding: 20px; box-sizing: border-box;
             overflow-y: auto; font-size: 0.85rem;
         }
-        #map-scope .sidebar-header { font-size: 0.7rem; letter-spacing: 3px; color: #454d5d; border-bottom: 1px solid #1a1c23; padding-bottom: 5px; margin-bottom: 15px; text-transform: uppercase; }
+        #map-scope .sidebar-header { font-size: 0.7rem; letter-spacing: 3px; color: #454d5d; border-bottom: 1px solid #1a1c23; padding-bottom: 5px; margin-bottom: 15px; text-transform: uppercase; display: flex; justify-content: space-between; }
         
         #map-scope select, #map-scope button { 
             width: 100%; padding: 10px; background: #161922; color: #00ff9d; border: 1px solid #454d5d; 
@@ -67,7 +67,10 @@
     </style>
 
     <div id="tactical-sidebar">
-        <div class="sidebar-header">NAV-COMPUTER SETUP</div>
+        <div class="sidebar-header">
+            <span>NAV-COMPUTER SETUP</span>
+            <span id="map-status" style="color: #00ff9d; opacity: 0.7;">STANDBY</span>
+        </div>
         <select id="region-select">
             <option value="terminus">REGION: TERMINUS</option>
             <option value="outlands" selected>REGION: OUTLANDS</option>
@@ -101,6 +104,7 @@
         const infoContainer = document.getElementById('sector-info-container');
         const viewport = document.getElementById('map-viewport');
         const archiveSelect = document.getElementById('archive-select');
+        const statusMsg = document.getElementById('map-status');
         
         const GRID_SCALE = 60; 
         let activeSector = null;
@@ -115,10 +119,13 @@
 
         window.initMap = async function() {
             try {
+                statusMsg.innerText = "LINKING CORE...";
                 await window.dataswornReady;
                 await refreshArchiveList();
+                statusMsg.innerText = "STANDBY";
             } catch (err) {
                 console.error("Map Module Link Failure:", err);
+                statusMsg.innerText = "LINK FAILED";
             }
         };
 
@@ -131,6 +138,7 @@
             }
         }
 
+        // Improved Oracle Finder for Schema Variations
         function findOracle(idSnippet) {
             let result = null;
             function search(obj) {
@@ -142,12 +150,25 @@
             return result;
         }
 
-        function rollOracle(idSnippet, fallback = "Unknown") {
+        function rollOracle(idSnippet, fallback = "") {
             const oracle = findOracle(idSnippet);
-            if (!oracle || !oracle.rows) return fallback;
+            let rows = null;
+            if (oracle) {
+                // Supports both v1.0 and v2.0 schema structures
+                rows = oracle.rows || oracle.table || oracle.entries;
+            }
+            if (!rows) return fallback;
+            
             const roll = Math.floor(Math.random() * 100) + 1;
-            const row = oracle.rows.find(r => roll >= r.floor && roll <= r.ceiling);
-            return row ? (row.text || row.result || fallback) : fallback;
+            const row = rows.find(r => roll >= (r.floor || r.min || 1) && roll <= (r.ceiling || r.max || 100));
+            return row ? (row.text || row.result || row.name || fallback) : fallback;
+        }
+
+        // Native Space Opera random generator just in case Datasworn JSON is unresponsive
+        function generateFallbackName() {
+            const prefixes = ["Aegis", "Vanguard", "Helios", "Erebus", "Corsair", "Nova", "Obsidian", "Cygnus", "Talos", "Onyx"];
+            const suffixes = ["Reach", "Expanse", "Drift", "Cluster", "Sector", "Nebula", "Void", "Abyss", "Veil"];
+            return prefixes[Math.floor(Math.random() * prefixes.length)] + " " + suffixes[Math.floor(Math.random() * suffixes.length)];
         }
 
         window.generateSector = async function() {
@@ -155,13 +176,17 @@
             
             const region = document.getElementById('region-select').value;
             const rules = REGION_RULES[region];
-            infoContainer.innerHTML = "<div>GENERATING...</div>";
+            statusMsg.innerText = "GENERATING...";
+
+            // Robust Sector Name Generation
+            let sName = rollOracle("sector_name", "");
+            if (!sName || sName === "") sName = generateFallbackName();
 
             const sector = {
-                id: 'sec_' + Date.now(), // Unique Database ID
-                name: rollOracle("oracles/space/sector_name", "Uncharted Sector"),
+                id: 'sec_' + Date.now(), 
+                name: sName,
                 region: region.toUpperCase(),
-                trouble: rollOracle("oracles/space/sector_trouble", "Unknown Threat"),
+                trouble: rollOracle("sector_trouble", "Unknown Threat"),
                 settlements: [],
                 passages: [],
                 connection: null,
@@ -184,18 +209,18 @@
                     attempts++;
                 } while (!valid && attempts < 100);
 
-                const loc = rollOracle("oracles/settlements/location", "Orbital");
+                const loc = rollOracle("settlement_location", "Orbital");
                 
                 sector.settlements.push({
                     id: i,
-                    name: rollOracle("oracles/settlements/name", `Outpost ${i}`),
+                    name: rollOracle("settlement_name", `Outpost ${i}`),
                     x: x, y: y,
                     location: loc,
-                    population: rollOracle("oracles/settlements/population", "Few"),
-                    authority: rollOracle("oracles/settlements/authority", "None"),
-                    projects: rollOracle("oracles/settlements/projects", "Survival"),
-                    star: rollOracle("oracles/space/stellar_object", "Main Sequence Star"),
-                    planet: loc.toLowerCase().includes("planet") ? rollOracle("oracles/planets/class", "Rocky World") : "N/A"
+                    population: rollOracle("population", "Few"),
+                    authority: rollOracle("authority", "None"),
+                    projects: rollOracle("settlement_projects", "Survival"),
+                    star: rollOracle("stellar_object", "Main Sequence Star"),
+                    planet: loc.toLowerCase().includes("planet") ? rollOracle("planet_class", "Rocky World") : "N/A"
                 });
             }
 
@@ -214,8 +239,8 @@
             }
 
             sector.connection = {
-                name: rollOracle("oracles/characters/name", "Unknown Contact"),
-                role: rollOracle("oracles/characters/role", "Scavenger"),
+                name: rollOracle("character_name", "Unknown Contact"),
+                role: rollOracle("character_role", "Scavenger"),
                 rank: "Dangerous",
                 home: sector.settlements[0].name
             };
@@ -232,31 +257,32 @@
             sector.ship = { x: shipX, y: shipY };
 
             activeSector = sector;
-            renderSector();
+            renderSector(); // This populates the UI cards!
             
-            infoContainer.innerHTML = "<div>UPLINKING TO DRIVE...</div>";
+            // Replaced the infoContainer overwrite with the subtle statusMsg update
+            statusMsg.innerText = "UPLINKING...";
             
-            // Save via new Archive Database method
             await window.gLink.saveSectorServer(window.charId, sector.id, sector.name, JSON.stringify(activeSector));
             await window.gLink.logServer(window.charId, `New Sector Charted: ${sector.name}`);
             
-            // Refresh the dropdown to show the newly created sector
             await refreshArchiveList();
-            archiveSelect.value = sector.id; // Select it automatically
+            archiveSelect.value = sector.id; 
+            statusMsg.innerText = "STANDBY";
         };
 
         window.loadArchivedSector = async function() {
             const id = archiveSelect.value;
             if (!id) return;
             
-            infoContainer.innerHTML = "<div>DOWNLOADING NAV DATA...</div>";
+            statusMsg.innerText = "DOWNLOADING...";
             const data = await window.gLink.loadSectorServer(window.charId, id);
             
             if (data) {
                 activeSector = data;
                 renderSector();
+                statusMsg.innerText = "STANDBY";
             } else {
-                infoContainer.innerHTML = `<div style="color:#ff0055;">ERROR: ARCHIVE CORRUPTED</div>`;
+                statusMsg.innerText = "ARCHIVE CORRUPTED";
             }
         };
 
@@ -363,8 +389,9 @@
             shipElement.style.left = (gridX * GRID_SCALE) + 'px';
             shipElement.style.top = (gridY * GRID_SCALE) + 'px';
 
-            // Save ship movement to database automatically!
+            statusMsg.innerText = "UPLINKING...";
             await window.gLink.saveSectorServer(window.charId, activeSector.id, activeSector.name, JSON.stringify(activeSector));
+            statusMsg.innerText = "STANDBY";
         });
 
         viewport.addEventListener('mouseleave', () => { isDragging = false; });
