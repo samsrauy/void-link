@@ -16,21 +16,21 @@
         }
         #map-scope button:hover { background: #00ff9d; color: #000; }
         
-        #map-scope .data-card { background: #161922; border: 1px solid #454d5d; padding: 10px; margin-bottom: 10px; border-left: 3px solid #00ff9d; }
+        #map-scope .data-card { background: #1a1c23; border: 1px solid #454d5d; padding: 10px; margin-bottom: 10px; border-left: 3px solid #00ff9d; }
         #map-scope .data-title { font-weight: bold; color: #bcdee7; font-family: 'Share Tech Mono'; margin-bottom: 5px; font-size: 1rem; }
         #map-scope .data-text { color: #aab; line-height: 1.4; font-size: 0.8rem; margin-bottom: 4px; }
-        #map-scope .tag { font-size: 0.6rem; background: #1a1c23; padding: 2px 6px; border-radius: 4px; border: 1px solid #454d5d; display: inline-block; margin-right: 4px; color: #ff0055;}
+        #map-scope .tag { font-size: 0.6rem; background: #161922; padding: 2px 6px; border-radius: 4px; border: 1px solid #454d5d; display: inline-block; margin-right: 4px; color: #ff0055;}
 
         /* Main Viewport & Grid */
         #map-viewport { 
-            flex-grow: 1; position: relative; cursor: crosshair; 
+            flex-grow: 1; position: relative; overflow: hidden;
             background-image: 
                 linear-gradient(rgba(0, 255, 153, 0.05) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(0, 255, 153, 0.05) 1px, transparent 1px);
-            background-size: 60px 60px; /* 60px Hex/Grid Scale */
+            background-size: 60px 60px;
         }
         
-        #map-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        #map-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
         
         /* Map Tokens */
         .poi-token { 
@@ -38,7 +38,7 @@
             background: #000; border: 2px solid #00ff9d; transform: translate(-50%, -50%);
             display: flex; align-items: center; justify-content: center;
             font-size: 10px; cursor: pointer; transition: 0.2s; box-shadow: 0 0 10px rgba(0,255,153,0.2);
-            z-index: 10;
+            z-index: 10; pointer-events: auto;
         }
         .poi-token:hover { transform: translate(-50%, -50%) scale(1.5); box-shadow: 0 0 15px #00ff9d; }
         .poi-label {
@@ -47,6 +47,18 @@
             font-family: 'Share Tech Mono'; color: #fff; border: 1px solid #454d5d; pointer-events: none;
             white-space: nowrap;
         }
+
+        /* Starship Token */
+        #ship-token {
+            position: absolute; width: 24px; height: 24px; 
+            background: rgba(0, 255, 153, 0.2); border: 2px solid #fff; 
+            transform: translate(-50%, -50%); z-index: 50; cursor: grab;
+            display: flex; align-items: center; justify-content: center;
+            clip-path: polygon(50% 0%, 100% 100%, 50% 80%, 0% 100%);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            pointer-events: auto;
+        }
+        #ship-token:active { cursor: grabbing; border-color: #ff0055; background: rgba(255,0,85,0.3); }
 
         /* SVG Lines for Passages */
         #passages-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
@@ -81,11 +93,15 @@
         const contentLayer = document.getElementById('map-content');
         const passagesLayer = document.getElementById('passages-layer');
         const infoContainer = document.getElementById('sector-info-container');
+        const viewport = document.getElementById('map-viewport');
         
         const GRID_SCALE = 60; // Represents 1 unit of distance
         let activeSector = null;
 
-        // Ruleset Configurations
+        // Dragging State
+        let isDragging = false;
+        let shipElement = null;
+
         const REGION_RULES = {
             'terminus': { settlements: 4, passages: 3 },
             'outlands': { settlements: 3, passages: 2 },
@@ -95,8 +111,6 @@
         window.initMap = async function() {
             try {
                 await window.dataswornReady;
-                
-                // Fetch saved map data via gLink
                 const stats = await window.gLink.loadStatsServer(window.charId);
                 if (stats && stats.sector_data) {
                     activeSector = JSON.parse(stats.sector_data);
@@ -107,7 +121,6 @@
             }
         };
 
-        // Helper: Find an Oracle by part of its ID in Datasworn
         function findOracle(idSnippet) {
             let result = null;
             function search(obj) {
@@ -119,13 +132,11 @@
             return result;
         }
 
-        // Helper: Roll a Datasworn Oracle table
         function rollOracle(idSnippet, fallback = "Unknown") {
             const oracle = findOracle(idSnippet);
             if (!oracle || !oracle.rows) return fallback;
             const roll = Math.floor(Math.random() * 100) + 1;
             const row = oracle.rows.find(r => roll >= r.floor && roll <= r.ceiling);
-            // Datasworn v1.0 uses 'text', newer sometimes uses 'result'
             return row ? (row.text || row.result || fallback) : fallback;
         }
 
@@ -134,7 +145,6 @@
             
             const region = document.getElementById('region-select').value;
             const rules = REGION_RULES[region];
-            
             infoContainer.innerHTML = "<div>GENERATING...</div>";
 
             const sector = {
@@ -143,14 +153,14 @@
                 trouble: rollOracle("oracles/space/sector_trouble", "Unknown Threat"),
                 settlements: [],
                 passages: [],
-                connection: null
+                connection: null,
+                ship: { x: 0, y: 0 }
             };
 
-            // 1. Automatic Placement Algorithm (Avoid Blackholes/Overlaps)
-            // We'll generate coordinates within a 12x10 grid bounding box
             const bounds = { w: 10, h: 8 };
-            const minDistance = 2; // Minimum grid units apart
+            const minDistance = 2;
 
+            // Generate Settlements
             for (let i = 0; i < rules.settlements; i++) {
                 let x, y, valid;
                 let attempts = 0;
@@ -158,18 +168,13 @@
                     valid = true;
                     x = Math.floor(Math.random() * bounds.w) + 1;
                     y = Math.floor(Math.random() * bounds.h) + 1;
-                    
-                    // Collision check
                     for (let s of sector.settlements) {
-                        const dist = Math.hypot(s.x - x, s.y - y);
-                        if (dist < minDistance) { valid = false; break; }
+                        if (Math.hypot(s.x - x, s.y - y) < minDistance) { valid = false; break; }
                     }
                     attempts++;
                 } while (!valid && attempts < 100);
 
-                // Determine types
                 const loc = rollOracle("oracles/settlements/location", "Orbital");
-                const isPlanet = loc.toLowerCase().includes("planet");
                 
                 sector.settlements.push({
                     id: i,
@@ -180,15 +185,13 @@
                     authority: rollOracle("oracles/settlements/authority", "None"),
                     projects: rollOracle("oracles/settlements/projects", "Survival"),
                     star: rollOracle("oracles/space/stellar_object", "Main Sequence Star"),
-                    planet: isPlanet ? rollOracle("oracles/planets/class", "Rocky World") : "N/A"
+                    planet: loc.toLowerCase().includes("planet") ? rollOracle("oracles/planets/class", "Rocky World") : "N/A"
                 });
             }
 
-            // 2. Generate Passages
-            // Connect closest settlements first to form a web
+            // Generate Passages
             let passageCount = 0;
             if (sector.settlements.length > 1) {
-                // Shuffle settlements to avoid predictable pathing
                 const shuffled = [...sector.settlements].sort(() => 0.5 - Math.random());
                 for (let i = 0; i < shuffled.length - 1; i++) {
                     if (passageCount >= rules.passages) break;
@@ -196,15 +199,12 @@
                     passageCount++;
                 }
             }
-
-            // If we still need passages (e.g. Expanse with 1 passage but no connections), lead off-map
             while (passageCount < rules.passages) {
-                const randomSettlement = Math.floor(Math.random() * sector.settlements.length);
-                sector.passages.push([randomSettlement, "OFF_MAP"]);
+                sector.passages.push([Math.floor(Math.random() * sector.settlements.length), "OFF_MAP"]);
                 passageCount++;
             }
 
-            // 3. Generate Local Connection (Step 9)
+            // Generate Local Connection
             sector.connection = {
                 name: rollOracle("oracles/characters/name", "Unknown Contact"),
                 role: rollOracle("oracles/characters/role", "Scavenger"),
@@ -212,14 +212,23 @@
                 home: sector.settlements[0].name
             };
 
+            // FTL JUMP PLACEMENT (Collision Avoidance)
+            let shipX, shipY, validJump;
+            do {
+                validJump = true;
+                shipX = Math.floor(Math.random() * bounds.w) + 1;
+                shipY = Math.floor(Math.random() * bounds.h) + 1;
+                for (let s of sector.settlements) {
+                    if (s.x === shipX && s.y === shipY) { validJump = false; break; }
+                }
+            } while (!validJump);
+            sector.ship = { x: shipX, y: shipY };
+
             activeSector = sector;
             renderSector();
             
-            // Save to Database
             infoContainer.innerHTML = "<div>UPLINKING TO DRIVE...</div>";
             await window.gLink.saveStatServer(window.charId, "sector_data", JSON.stringify(activeSector));
-            
-            // Log generation to Journal Document
             await window.gLink.logServer(window.charId, `Sector Generated: ${sector.name} [${sector.region}]`);
         };
 
@@ -240,7 +249,7 @@
                 return;
             }
 
-            // Render Sidebar Info
+            // Draw Sidebar Info
             let html = `
                 <div class="data-card" style="border-color: #fbbf24;">
                     <div class="data-title">${activeSector.name}</div>
@@ -259,7 +268,6 @@
 
             // Draw Settlements
             activeSector.settlements.forEach(s => {
-                // Sidebar List
                 html += `
                     <div class="data-card">
                         <div class="data-title">${s.name}</div>
@@ -270,41 +278,33 @@
                     </div>
                 `;
 
-                // Map Tokens
-                const px = (s.x * GRID_SCALE) + (GRID_SCALE/2);
-                const py = (s.y * GRID_SCALE) + (GRID_SCALE/2);
-                
                 const token = document.createElement('div');
                 token.className = 'poi-token';
-                token.style.left = px + 'px';
-                token.style.top = py + 'px';
+                token.style.left = (s.x * GRID_SCALE) + 'px';
+                token.style.top = (s.y * GRID_SCALE) + 'px';
                 token.innerHTML = `<div class="poi-label">${s.name}</div>`;
-                
-                // Color code based on if it has a planet
                 if (s.planet !== 'N/A') token.style.borderColor = "#fbbf24";
-
                 contentLayer.appendChild(token);
             });
 
             infoContainer.innerHTML = html;
 
-            // Draw Passages (SVG Lines)
+            // Draw Passages
             activeSector.passages.forEach(p => {
                 const s1 = activeSector.settlements.find(x => x.id === p[0]);
                 if (!s1) return;
 
-                const x1 = (s1.x * GRID_SCALE) + (GRID_SCALE/2);
-                const y1 = (s1.y * GRID_SCALE) + (GRID_SCALE/2);
+                const x1 = s1.x * GRID_SCALE;
+                const y1 = s1.y * GRID_SCALE;
 
                 let x2, y2;
                 if (p[1] === "OFF_MAP") {
-                    // Draw line off edge of screen
                     x2 = x1 + (GRID_SCALE * 3);
                     y2 = y1 - (GRID_SCALE * 2);
                 } else {
                     const s2 = activeSector.settlements.find(x => x.id === p[1]);
-                    x2 = (s2.x * GRID_SCALE) + (GRID_SCALE/2);
-                    y2 = (s2.y * GRID_SCALE) + (GRID_SCALE/2);
+                    x2 = s2.x * GRID_SCALE;
+                    y2 = s2.y * GRID_SCALE;
                 }
 
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -315,9 +315,52 @@
                 line.setAttribute('class', 'passage-line');
                 passagesLayer.appendChild(line);
             });
+
+            // Draw Ship Token
+            shipElement = document.createElement('div');
+            shipElement.id = 'ship-token';
+            shipElement.style.left = (activeSector.ship.x * GRID_SCALE) + 'px';
+            shipElement.style.top = (activeSector.ship.y * GRID_SCALE) + 'px';
+            contentLayer.appendChild(shipElement);
+
+            // Drag Events
+            shipElement.onmousedown = () => isDragging = true;
         }
 
-        // Initialize immediately
+        // Handle Ship Dragging & Snapping globally on the viewport
+        viewport.addEventListener('mousemove', (e) => {
+            if (!isDragging || !shipElement) return;
+            const rect = viewport.getBoundingClientRect();
+            // Free move while dragging
+            shipElement.style.left = (e.clientX - rect.left) + 'px';
+            shipElement.style.top = (e.clientY - rect.top) + 'px';
+        });
+
+        viewport.addEventListener('mouseup', async (e) => {
+            if (!isDragging || !activeSector) return;
+            isDragging = false;
+            
+            const rect = viewport.getBoundingClientRect();
+            const rawX = e.clientX - rect.left;
+            const rawY = e.clientY - rect.top;
+
+            // Snap to Grid Mathematics
+            const gridX = Math.round(rawX / GRID_SCALE);
+            const gridY = Math.round(rawY / GRID_SCALE);
+
+            activeSector.ship.x = gridX;
+            activeSector.ship.y = gridY;
+
+            // Snap token into place visually
+            shipElement.style.left = (gridX * GRID_SCALE) + 'px';
+            shipElement.style.top = (gridY * GRID_SCALE) + 'px';
+
+            // Save to network silently
+            await window.gLink.saveStatServer(window.charId, "sector_data", JSON.stringify(activeSector));
+        });
+
+        viewport.addEventListener('mouseleave', () => { isDragging = false; });
+
         initMap();
     })();
 </script>
