@@ -1,5 +1,11 @@
 # Starforged Void-Link Terminal
 
+  >[!NOTE]
+  >After you create a Web App URL, don't click on it. You can, but nothing will happen. You have to
+  >click on this repo's GitHub Pages: https://samsrauy.github.io/void-link/
+  >That page will ask you for your callsign (character's name) and the Web App URL. That's what you use
+  >that for. It's for the the repo's web page to be able to save your game and log.
+
 A synchronized, multiplayer-ready character and campaign manager for Ironsworn: Starforged. 
 
 Q: Do I worry about security?
