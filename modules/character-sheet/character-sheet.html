@@ -61,23 +61,19 @@
     async function initSheet() {
         console.log("Sheet Module: Initializing for ID:", window.charId);
         try {
-            // Wait for Datasworn (global)
             if (window.dataswornReady) await window.dataswornReady;
             
-            // Fetch stats using global sync.js functions
-            const data = await loadStats(window.charId);
+            // Connect to gLink API
+            const data = await window.gLink.loadStatsServer(window.charId);
             const sheetData = data || {};
             
-            // Set Display Name
             document.getElementById('char-sheet-display').innerText = (sheetData.name || window.charId).toUpperCase();
             
-            // Map Stats
             ['edge','heart','iron','shadow','wits'].forEach(s => {
                 const el = document.getElementById(`v-${s}`);
                 if (el) el.innerText = sheetData[s] || 0;
             });
 
-            // Render Tracks
             document.getElementById('tracks-container').innerHTML = '';
             document.getElementById('momentum-container').innerHTML = '';
             
@@ -86,7 +82,6 @@
             renderResource('supply', 0, 5, parseInt(sheetData.supply ?? 5), 'tracks-container');
             renderResource('momentum', -6, 10, parseInt(sheetData.momentum ?? 2), 'momentum-container');
 
-            // Store locally for rolls
             window.activeCharData = sheetData;
 
         } catch (err) {
@@ -109,7 +104,8 @@
             dot.onclick = async () => {
                 updateDotsUI(name, i, min, max);
                 window.activeCharData[name] = i;
-                saveStat(window.charId, name, i);
+                // Connect to gLink API
+                window.gLink.saveStatServer(window.charId, name, i);
             };
             dotBox.appendChild(dot);
         }
@@ -123,6 +119,19 @@
         });
     }
 
+    // Temporary local fallback for rolling to prevent crashes
+    async function tempNeuralRoll(statName, val) {
+        const d1 = Math.floor(Math.random() * 10) + 1;
+        const d2 = Math.floor(Math.random() * 10) + 1;
+        const action = Math.floor(Math.random() * 6) + 1 + val;
+        
+        let result = "MISS";
+        if (action > d1 && action > d2) result = "STRONG HIT";
+        else if (action > d1 || action > d2) result = "WEAK HIT";
+        
+        return { result, details: `Action(${action}) vs Challenge(${d1}, ${d2})` };
+    }
+
     async function triggerMoveRoll(statName) {
         const val = parseInt(window.activeCharData[statName.toLowerCase()] || 0);
         const overlay = document.getElementById('roll-overlay');
@@ -130,15 +139,16 @@
         document.getElementById('roll-res').innerText = "CALCULATING...";
         
         try {
-            const roll = await triggerNeuralRoll(statName, val, 0);
+            // Using the local fallback for now
+            const roll = await tempNeuralRoll(statName, val);
             document.getElementById('roll-res').innerText = roll.result;
             document.getElementById('roll-res').style.color = roll.result.includes("MISS") ? "#ff0055" : "#00ff9d";
             document.getElementById('roll-details').innerText = `${statName} (+${val}) vs ${roll.details}`;
         } catch (e) {
             document.getElementById('roll-res').innerText = "ROLL ERROR";
+            console.error(e);
         }
     }
 
-    // Initialize after a slight delay to ensure sync.js is fully parsed
     setTimeout(initSheet, 100);
 </script>
