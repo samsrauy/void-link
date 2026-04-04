@@ -54,25 +54,32 @@
 
         try {
             await window.dataswornReady;
-            const data = window.datasworn;
+            
+            // Safely fetch assets using the new Core API
+            const collections = window.dataswornCore.getAssets();
 
-            if (!data || !data.asset_collections) {
-                throw new Error("Datasworn Data Core is empty or malformed.");
+            if (!collections) {
+                throw new Error("Data Core is active, but the 'assets' library could not be mapped.");
             }
 
-            const collections = data.asset_collections;
             catSelect.innerHTML = Object.keys(collections).sort().map(key => 
-                `<option value="${key}">${collections[key].name.toUpperCase()}</option>`
+                `<option value="${key}">${(collections[key].name || key).toUpperCase()}</option>`
             ).join('');
 
             window.renderAssets = (catKey) => {
                 const assets = collections[catKey].contents;
+                if (!assets) {
+                    grid.innerHTML = `<div style="color:#ff0055;">No assets found.</div>`;
+                    return;
+                }
+                
                 grid.innerHTML = Object.values(assets).map(asset => {
+                    const assetId = asset._id || asset.$id || asset.id;
                     return `
                         <div class="asset-card">
-                            <div class="asset-type">${collections[catKey].name}</div>
+                            <div class="asset-type">${collections[catKey].name || 'ASSET'}</div>
                             <div class="asset-name">${asset.name}</div>
-                            <div style="font-size:0.7rem; margin-bottom:10px; color:#454d5d;">ID: ${asset._id}</div>
+                            <div style="font-size:0.7rem; margin-bottom:10px; color:#454d5d;">ID: ${assetId}</div>
                             
                             <div class="abilities-list">
                                 ${(asset.abilities || []).map((ab, i) => `
@@ -82,7 +89,7 @@
                                 `).join('')}
                             </div>
 
-                            <button class="install-btn" onclick="claimAsset('${asset._id}', '${asset.name.replace(/'/g, "\\'")}')">
+                            <button class="install-btn" onclick="claimAsset('${assetId}', '${asset.name.replace(/'/g, "\\'")}')">
                                 INSTALL ASSET
                             </button>
                         </div>
@@ -100,10 +107,7 @@
         window.claimAsset = async function(assetId, name) {
             if (confirm(`Authorize installation of ${name}?`)) {
                 document.getElementById('status-msg').innerText = "TRANSMITTING...";
-                
-                // Write installation to the Game Log Doc
                 await window.gLink.logServer(window.charId, `Installed Asset: [${name}]`);
-                
                 document.getElementById('status-msg').innerText = "MANIFEST UPDATED";
                 alert(`${name} successfully uplinked to character profile.`);
             }
