@@ -32,20 +32,35 @@
 </div>
 
 <script>
+    // Store local history to render
+    let localHistory = [];
+
     (async function initJournal() {
         const status = document.getElementById('journal-status');
         const textarea = document.getElementById('journal-input');
         
         try {
-            // Accessing global scope instead of window.parent
             if (window.dataswornReady) await window.dataswornReady;
-            const stats = await loadStats(window.charId);
+            
+            // Connect using the new gLink bridge
+            const stats = await window.gLink.loadStatsServer(window.charId);
             
             if (stats) {
                 document.getElementById('sync-indicator').classList.add('online');
                 textarea.value = stats.journal_draft || "";
-                if (stats.history) renderJournalHistory(stats.history);
+                
+                // Assuming history comes as an array, otherwise we init empty
+                localHistory = stats.history ? (Array.isArray(stats.history) ? stats.history : JSON.parse(stats.history)) : [];
+                renderJournalHistory(localHistory);
             }
+
+            // Set auto-save every 5 minutes (300,000 milliseconds)
+            setInterval(() => {
+                if (textarea.value.trim().length > 0) {
+                    saveJournalDraft(true);
+                }
+            }, 300000);
+
         } catch (err) {
             status.innerText = "LINK SEVERED";
             console.error("Journal Error:", err);
@@ -53,20 +68,39 @@
     })();
 
     function renderJournalHistory(historyArray) {
+        if (!Array.isArray(historyArray)) return;
         const feed = document.getElementById('history-feed');
         feed.innerHTML = historyArray.slice(-5).reverse().map(entry => `
             <div class="history-item">
                 <div style="font-size:0.6rem; color:#ff0055;">ARCHIVED ENTRY</div>
-                <div>${entry}</div>
+                <div style="white-space: pre-wrap;">${entry}</div>
             </div>
         `).join('');
     }
 
-    async function saveJournalDraft() {
+    // Pass isAuto=true to avoid changing the UI status to distracting text
+    async function saveJournalDraft(isAuto = false) {
         const content = document.getElementById('journal-input').value;
-        document.getElementById('journal-status').innerText = "CACHING...";
-        await saveStat(window.charId, "journal_draft", content);
-        document.getElementById('journal-status').innerText = "CACHED: " + new Date().toLocaleTimeString();
+        const statusEl = document.getElementById('journal-status');
+        
+        if (!isAuto) statusEl.innerText = "CACHING...";
+        
+        await window.gLink.saveStatServer(window.charId, "journal_draft", content);
+        
+        if (!isAuto) {
+            statusEl.innerText = "CACHED: " + new Date().toLocaleTimeString();
+        } else {
+            console.log("Journal auto-saved at " + new Date().toLocaleTimeString());
+        }
+    }
+
+    function getFormattedTimestamp() {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const time = d.toTimeString().split(' ')[0];
+        return `${year}-${month}-${day} ${time}`;
     }
 
     async function commitJournalToArchive() {
@@ -75,12 +109,23 @@
         if (!content || !confirm("Archive this entry?")) return;
 
         document.getElementById('journal-status').innerText = "TRANSMITTING...";
-        await saveStat(window.charId, "history_entry", content);
-        await saveStat(window.charId, "journal_draft", "");
+        
+        // Construct the log payload with ID and Timestamp
+        const timestamp = getFormattedTimestamp();
+        const logEntry = `[ID: ${window.charId.toUpperCase()} | ${timestamp}]\n${content}\n`;
+
+        // 1. Submit to Google Docs Log
+        await window.gLink.logServer(window.charId, logEntry);
+        
+        // 2. Clear the temporary holding cell on Google Sheets
+        await window.gLink.saveStatServer(window.charId, "journal_draft", "");
+        
+        // 3. Clear the UI
         textarea.value = "";
         document.getElementById('journal-status').innerText = "ARCHIVE SECURED";
-        // Refresh local history view
-        const updatedStats = await loadStats(window.charId);
-        if (updatedStats.history) renderJournalHistory(updatedStats.history);
+        
+        // Push locally to avoid needing to immediately reload everything
+        localHistory.push(logEntry);
+        renderJournalHistory(localHistory);
     }
 </script>
