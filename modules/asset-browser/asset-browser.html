@@ -107,10 +107,25 @@
         window.claimAsset = async function(assetId, name) {
             if (confirm(`Authorize installation of ${name}?`)) {
                 document.getElementById('status-msg').innerText = "TRANSMITTING...";
+                
+                // 1. Send the standard log entry
                 await window.gLink.logServer(window.charId, `Installed Asset: [${name}]`);
+
+                // 2. Fetch the current character data from the database
+                const stats = await window.gLink.loadStatsServer(window.charId) || {};
+                
+                // 3. Parse existing assets, or start a new array if it's empty
+                let myAssets = stats.assets ? JSON.parse(stats.assets) : [];
+                
+                // 4. Ensure we don't install duplicate assets
+                if (!myAssets.find(a => a.id === assetId)) {
+                    myAssets.push({ id: assetId, enabled: [] });
+                    
+                    // 5. Upload the modified array back to the "assets" column
+                    await window.gLink.saveStatServer(window.charId, "assets", JSON.stringify(myAssets));
+                }
+
                 document.getElementById('status-msg').innerText = "MANIFEST UPDATED";
                 alert(`${name} successfully uplinked to character profile.`);
             }
         };
-    })();
-</script>
