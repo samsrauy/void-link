@@ -1,20 +1,20 @@
 <div id="map-scope">
     <style>
         #map-scope { width: 100%; height: 100%; background: #050508; color: #00ff9d; font-family: 'Exo 2', sans-serif; display: flex; position: relative; overflow: hidden; }
-
-        #map-scope #tactical-sidebar {
-            width: 380px; background: rgba(11, 13, 18, 0.95); border-right: 1px solid #1a1c23;
+        
+        #map-scope #tactical-sidebar { 
+            width: 380px; background: rgba(11, 13, 18, 0.95); border-right: 1px solid #1a1c23; 
             display: flex; flex-direction: column; z-index: 20; padding: 20px; box-sizing: border-box;
             overflow-y: auto; font-size: 0.85rem;
         }
         #map-scope .sidebar-header { font-size: 0.7rem; letter-spacing: 3px; color: #454d5d; border-bottom: 1px solid #1a1c23; padding-bottom: 5px; margin-bottom: 15px; text-transform: uppercase; display: flex; justify-content: space-between; }
-
-        #map-scope select, #map-scope button {
-            width: 100%; padding: 10px; background: #161922; color: #00ff9d; border: 1px solid #454d5d;
+        
+        #map-scope select, #map-scope button { 
+            width: 100%; padding: 10px; background: #161922; color: #00ff9d; border: 1px solid #454d5d; 
             margin-bottom: 10px; font-family: 'Share Tech Mono', monospace; cursor: pointer; text-transform: uppercase;
         }
         #map-scope button:hover { background: #00ff9d; color: #000; }
-
+        
         #map-scope .data-card { background: #1a1c23; border: 1px solid #454d5d; padding: 10px; margin-bottom: 10px; border-left: 3px solid #00ff9d; }
         #map-scope .data-title { font-weight: bold; color: #bcdee7; font-family: 'Share Tech Mono'; margin-bottom: 5px; font-size: 1rem; }
         #map-scope .data-text { color: #aab; line-height: 1.4; font-size: 0.8rem; margin-bottom: 4px; }
@@ -23,29 +23,29 @@
         #map-scope .editable { border-bottom: 1px dashed #454d5d; cursor: text; outline: none; transition: 0.2s; display: inline-block; min-width: 20px; }
         #map-scope .editable:focus { border-bottom-color: #00ff9d; background: rgba(0,255,153,0.1); }
 
-        #map-viewport {
+        #map-viewport { 
             flex-grow: 1; position: relative; overflow: hidden;
             background-color: #020204;
         }
 
-        #starscape { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+        #starscape { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; transition: background 1s; }
         #map-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
-
+        
         #grid-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2;
             -webkit-mask-image: linear-gradient(to right, black 65%, transparent 100%);
             mask-image: linear-gradient(to right, black 65%, transparent 100%);
         }
 
-        .poi-token {
-            position: absolute; border-radius: 50%;
+        .poi-token { 
+            position: absolute; border-radius: 50%; 
             background: #000; border: 2px solid #00ff9d; transform: translate(-50%, -50%);
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; transition: 0.2s; box-shadow: 0 0 10px rgba(0,255,153,0.3);
             pointer-events: auto; z-index: 15;
         }
         .poi-token:hover { transform: translate(-50%, -50%) scale(1.3); z-index: 30 !important; }
-
+        
         .token-derelict { border-radius: 2px; border-color: #10b981; background: #064e3b; box-shadow: 0 0 10px rgba(16,185,129,0.3); }
         .token-precursor { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); border-radius: 0; background: #3b0764; box-shadow: none; border: none; }
         .token-asteroid { background: transparent; border: none; color: #9ca3af; font-size: 20px; box-shadow: none; }
@@ -59,8 +59,8 @@
         }
 
         #ship-token {
-            position: absolute; width: 20px; height: 20px;
-            background: rgba(0, 255, 153, 0.2); border: 2px solid #fff;
+            position: absolute; width: 20px; height: 20px; 
+            background: rgba(0, 255, 153, 0.2); border: 2px solid #fff; 
             transform: translate(-50%, -50%); cursor: grab;
             display: flex; align-items: center; justify-content: center;
             clip-path: polygon(50% 0%, 100% 100%, 50% 80%, 0% 100%);
@@ -70,9 +70,9 @@
         #ship-token:active { cursor: grabbing; border-color: #ff0055; background: rgba(255,0,85,0.3); transform: translate(-50%, -50%) scale(1.2); }
 
         .npc-ship-token {
-            position: absolute; width: 16px; height: 16px;
-            background: rgba(251, 191, 36, 0.2); border: 2px solid #f59e0b;
-            transform: translate(-50%, -50%);
+            position: absolute; width: 16px; height: 16px; 
+            background: rgba(251, 191, 36, 0.2); border: 2px solid #f59e0b; 
+            transform: translate(-50%, -50%); 
             display: flex; align-items: center; justify-content: center;
             clip-path: polygon(50% 0%, 100% 100%, 50% 80%, 0% 100%);
             box-shadow: 0 0 10px rgba(245, 158, 11, 0.3); pointer-events: auto; z-index: 14;
@@ -80,7 +80,7 @@
         .npc-ship-token:hover { transform: translate(-50%, -50%) scale(1.5); box-shadow: 0 0 15px #f59e0b; z-index: 20; }
 
         #passages-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
-        .passage-line { stroke: rgba(0, 255, 153, 0.3); stroke-width: 2; stroke-dasharray: 4; fill: none; }
+        .passage-line { stroke-width: 2; stroke-dasharray: 4; fill: none; transition: stroke 1s; }
     </style>
 
     <div id="tactical-sidebar">
@@ -95,7 +95,7 @@
             <option value="void">REGION: THE VOID</option>
         </select>
         <button id="btn-generate" onclick="generateSector()">GENERATE NEW SECTOR</button>
-
+        
         <div class="sidebar-header" style="margin-top:20px;">NAV ARCHIVES</div>
         <select id="archive-select">
             <option value="">-- NO ARCHIVES FOUND --</option>
@@ -113,7 +113,7 @@
         <svg id="grid-layer"></svg>
         <svg id="passages-layer"></svg>
         <div id="map-content"></div>
-
+        
         <svg id="ruler-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100;">
             <line id="ruler-line" x1="0" y1="0" x2="0" y2="0" stroke="#ff0055" stroke-width="2" stroke-dasharray="5,5" display="none" />
             <rect id="ruler-bg" fill="#1a1c23" stroke="#454d5d" stroke-width="1" rx="4" display="none" />
@@ -121,7 +121,6 @@
         </svg>
     </div>
 </div>
-
 
 <script>
     (function() {
@@ -149,15 +148,14 @@
             'terminus': { settlements: 6, passages: 4, bhChance: 0.02 },
             'outlands': { settlements: 5, passages: 3, bhChance: 0.15 },
             'expanse':  { settlements: 4, passages: 2, bhChance: 0.30 },
-            'void':     { settlements: 2, passages: 1, bhChance: 1.00 }
+            'void':     { settlements: 4, passages: 1, bhChance: 1.00 } // Settlements quota used for derelicts here!
         };
 
-        // NEW: Danger-coded color palette!
         const REGION_COLORS = {
             'terminus': { hex: '#00ff9d', grid: 'rgba(0, 255, 153, 0.08)', pass: 'rgba(0, 255, 153, 0.3)' },  // Green
             'outlands': { hex: '#facc15', grid: 'rgba(250, 204, 21, 0.08)', pass: 'rgba(250, 204, 21, 0.3)' }, // Yellow
             'expanse':  { hex: '#f97316', grid: 'rgba(249, 115, 22, 0.08)', pass: 'rgba(249, 115, 22, 0.3)' }, // Orange
-            'void':     { hex: '#ef4444', grid: 'rgba(239, 68, 68, 0.08)', pass: 'rgba(239, 68, 68, 0.3)' }    // Red
+            'void':     { hex: '#ef4444', grid: 'rgba(239, 68, 68, 0.08)', pass: 'rgba(239, 68, 68, 0.3)' }    // Red Alert
         };
 
         const charNames = ["Jax", "Kaelen", "Lyra", "Voss", "Sira", "Tark", "Rian", "Cora", "Dax", "Elara", "Zane", "Nova", "Kian"];
@@ -167,8 +165,6 @@
         const locRolls = ["Deep Space Station", "Orbital Habitat", "Asteroid Base", "Planetary Settlement", "Gas Giant Refinery"];
         const planetRolls = ["Desert World", "Ice World", "Furnace World", "Jungle World", "Ocean World", "Rocky World", "Toxic World", "Shattered World"];
         const starRolls = ["Neutron Star", "Red Dwarf Star", "Pulsar", "Main Sequence Star", "White Dwarf Star"];
-        
-        // NEW: Terrifying fallback names for Black Holes
         const voidNames = ["The Maw", "Abyssal Eye", "Gargantua", "Erebus", "Oblivion Gate", "Tartarus", "Singularity Prime", "The Great Dark"];
 
         const WIKI_LINKS = {
@@ -193,6 +189,20 @@
             "Toxic World": "https://en.wikipedia.org/wiki/Carbon_planet",
             "Shattered World": "https://en.wikipedia.org/wiki/Disrupted_planet"
         };
+
+        // Inject Dynamic CSS styles so everything follows the region theme
+        const dynamicStyle = document.createElement('style');
+        dynamicStyle.innerHTML = `
+            #map-scope { --theme-color: #00ff9d; --theme-bg: rgba(0,255,153,0.1); color: var(--theme-color); transition: color 0.5s; }
+            #map-scope select, #map-scope button { color: var(--theme-color); border-color: #454d5d; transition: all 0.3s; }
+            #map-scope button:hover { background: var(--theme-color); color: #000; border-color: var(--theme-color); }
+            #map-status { color: var(--theme-color); transition: color 0.5s; }
+            #map-scope .data-card { border-left-color: var(--theme-color); transition: border-left-color 0.5s; }
+            .poi-token { border-color: var(--theme-color); transition: border-color 0.5s, box-shadow 0.2s, transform 0.2s; }
+            .poi-token:hover { box-shadow: 0 0 15px var(--theme-color); }
+            .editable:focus { border-bottom-color: var(--theme-color); background: var(--theme-bg); }
+        `;
+        document.head.appendChild(dynamicStyle);
 
         window.initMap = async function() {
             try {
@@ -325,14 +335,14 @@
             };
 
             let idCounter = 0;
-            const objectsToGen = rules.settlements + 4; 
             let starCount = 0;
-            let voidTriggered = false; // Tracks if we fell into the Void!
+            let voidTriggered = false; 
 
             const MIN_X = 2; const MAX_X_SAFE = bounds.w - 2; 
             const MIN_Y = 2; const MAX_Y = bounds.h - 2;
 
-            for (let i = 0; i < objectsToGen; i++) {
+            // Pass 1: Massive Gravity Wells (Independent from Settlement quota)
+            for (let i = 0; i < 3; i++) { 
                 if (starCount >= 2) break;
                 if (Math.random() > 0.4 && region !== 'void') continue; 
                 
@@ -346,7 +356,7 @@
                 if (!valid) continue;
 
                 let isBlackHole = Math.random() < rules.bhChance;
-                if (isBlackHole) voidTriggered = true; // The trap is sprung!
+                if (isBlackHole) voidTriggered = true; 
 
                 let name = isBlackHole 
                     ? "Black Hole (" + rollOracle("anomaly_name", voidNames[Math.floor(Math.random() * voidNames.length)]) + ")"
@@ -370,14 +380,16 @@
                 }
             }
 
-            // NARRATIVE OVERRIDE: If a Black Hole spawned in a safer region, you fell into a Void Pocket!
+            // Override Theme if Void triggered!
             if (voidTriggered && region !== 'void') {
                 region = 'void';
                 sector.region = 'VOID';
             }
 
-            for (let i = 0; i < objectsToGen; i++) {
-                if (Math.random() > 0.50) continue; 
+            // Pass 2: Planets (Independent from Settlement quota)
+            let numPlanets = Math.floor(Math.random() * rules.settlements) + 1;
+            for (let i = 0; i < numPlanets; i++) {
+                if (Math.random() > 0.60) continue; 
                 
                 let attempts = 0, valid = false, x, y;
                 while (!valid && attempts < 50) {
@@ -402,7 +414,9 @@
                 }
             }
 
-            for (let i = 0; i < objectsToGen; i++) {
+            // Pass 3: Asteroid Swarms (Independent from Settlement quota)
+            let numAsteroids = Math.floor(Math.random() * rules.settlements) + 1;
+            for (let i = 0; i < numAsteroids; i++) {
                 if (Math.random() > 0.4) continue;
                 
                 let x, y, valid = false, attempts = 0;
@@ -419,7 +433,7 @@
                     }
 
                     for (let s of sector.settlements) {
-                        if (s.x === x && s.y === y) valid = false; // No exact overlaps!
+                        if (s.x === x && s.y === y) valid = false; 
                         if (s.renderType === "anomaly" && Math.hypot(s.x - x, s.y - y) < 5) valid = false;
                     }
                     attempts++;
@@ -433,14 +447,26 @@
                 }
             }
 
-            while (sector.settlements.length < objectsToGen) {
+            // Pass 4: Outposts, Stations, and Clutter (Uses Settlement Quota)
+            for (let i = 0; i < rules.settlements; i++) {
+                
+                let settlementChance = 0.5;
+                if (region === 'void') settlementChance = 0.0; // No living stations in the Void!
+                else if (region === 'expanse') settlementChance = 0.4;
+                else if (region === 'outlands') settlementChance = 0.6;
+                else settlementChance = 0.8; // Terminus is mostly outposts
+
                 let rnd = Math.random();
                 let loc, name, renderType, pType = "N/A", auth = "N/A", proj = "N/A", pop = "None";
                 
-                if (rnd < 0.2) { loc = "Derelict Spacecraft"; name = "Unknown Ghost Ship"; renderType = "derelict"; }
-                else if (rnd < 0.4) { loc = "Precursor Vault"; name = "Alien Construct"; renderType = "precursor"; }
-                else if (rnd < 0.5) { loc = "Anomalous Signature"; name = "Unknown Contact"; renderType = "unknown"; }
-                else {
+                if (rnd > settlementChance) {
+                    // Clutter
+                    let clutRnd = Math.random();
+                    if (clutRnd < 0.4) { loc = "Derelict Spacecraft"; name = "Unknown Ghost Ship"; renderType = "derelict"; }
+                    else if (clutRnd < 0.7) { loc = "Precursor Vault"; name = "Alien Construct"; renderType = "precursor"; }
+                    else { loc = "Anomalous Signature"; name = "Unknown Contact"; renderType = "unknown"; }
+                } else {
+                    // Real Settlement
                     loc = rollOracle("settlement_location", locRolls[Math.floor(Math.random() * locRolls.length)]);
                     name = rollOracle("settlement_name", `Outpost ${idCounter}`);
                     pType = loc.toLowerCase().includes("planet") ? rollOracle("planet_class", planetRolls[Math.floor(Math.random() * planetRolls.length)]) : "N/A";
@@ -471,7 +497,7 @@
                         id: idCounter++, x: x, y: y, name: name, location: loc,
                         population: pop, authority: auth, projects: proj, planet: pType, renderType: renderType
                     });
-                } else { break; } 
+                }
             }
 
             const trueSettlements = sector.settlements.filter(s => s.renderType === "settlement" || s.renderType === "planet");
@@ -524,7 +550,7 @@
                 token.dataset.origTransform = token.style.transform;
                 token.style.transform = 'translate(-50%, -50%) scale(1.5)'; 
                 token.style.zIndex = '50'; 
-                token.style.boxShadow = '0 0 25px #fff';
+                token.style.boxShadow = '0 0 25px var(--theme-color)';
             }
         }
         window.unhighlightMapToken = function(id) {
@@ -537,7 +563,7 @@
         }
         window.highlightSidebarCard = function(id) {
             const card = document.getElementById(`card-${id}`);
-            if (card) { card.style.borderColor = '#fff'; card.style.backgroundColor = '#1f2937'; card.scrollIntoView({behavior: "smooth", block: "nearest"}); }
+            if (card) { card.style.borderColor = 'var(--theme-color)'; card.style.backgroundColor = 'rgba(0,0,0,0.3)'; card.scrollIntoView({behavior: "smooth", block: "nearest"}); }
         }
         window.unhighlightSidebarCard = function(id) {
             const card = document.getElementById(`card-${id}`);
@@ -552,6 +578,10 @@
             if (!activeSector) return;
             const regKey = activeSector.region.toLowerCase();
             const rColor = REGION_COLORS[regKey] || REGION_COLORS['terminus'];
+
+            // UI Theme Injection
+            scope.style.setProperty('--theme-color', rColor.hex);
+            scope.style.setProperty('--theme-bg', rColor.grid.replace('0.08', '0.1'));
 
             drawGrid(regKey);
             const bg = document.getElementById('starscape');
@@ -573,18 +603,18 @@
             }
 
             let html = `
-                <div class="data-card" style="border-color: ${rColor.hex};">
+                <div class="data-card" style="border-left-color: ${rColor.hex};">
                     <div class="data-title editable" contenteditable="true" spellcheck="false" onblur="editSectorField('name', this.innerText)">${activeSector.name}</div>
                     <span class="tag" style="background: ${rColor.grid.replace('0.08', '0.2')}; color: ${rColor.hex}; border-color: ${rColor.hex};">${activeSector.region}</span>
                     ${activeSector.nebula ? `<span class="tag" style="background:#4c1d95; color:#ddd; border-color:#8b5cf6;">NEBULA DETECTED</span>` : ''}
                 </div>
-                <div class="data-card" style="border-color: #ff0055;">
+                <div class="data-card" style="border-left-color: #ff0055;">
                     <div class="tag">SECTOR TROUBLE</div>
                     <div class="data-text editable" contenteditable="true" spellcheck="false" onblur="editSectorField('trouble', this.innerText)">${activeSector.trouble}</div>
                 </div>
                 
-                <div id="card-npc" class="data-card" style="border-color: #3b82f6; transition: 0.3s;" onmouseenter="highlightMapToken('npc')" onmouseleave="unhighlightMapToken('npc')">
-                    <div class="tag">LOCAL CONNECTION</div>
+                <div id="card-npc" class="data-card" style="border-left-color: #3b82f6; transition: 0.3s;" onmouseenter="highlightMapToken('npc')" onmouseleave="unhighlightMapToken('npc')">
+                    <div class="tag" style="border-color:#3b82f6; color:#3b82f6;">LOCAL CONNECTION</div>
                     <div class="data-text">
                         <b class="editable" contenteditable="true" spellcheck="false" onblur="editSectorField('connection.name', this.innerText)">${activeSector.connection.name}</b> 
                         (<span class="editable" contenteditable="true" spellcheck="false" onblur="editSectorField('connection.role', this.innerText)">${activeSector.connection.role}</span>)
@@ -628,12 +658,13 @@
                 token.onmouseleave = () => unhighlightSidebarCard(s.id);
 
                 let tWidth = 16; let tHeight = 16;
-                let shadowStr = "0 0 10px rgba(0,255,153,0.3)";
+                // Use CSS Variable for default token shadows so they match the region!
+                let shadowStr = `0 0 10px ${rColor.hex}`;
 
-                if (s.renderType === 'derelict') { token.classList.add('token-derelict'); }
-                else if (s.renderType === 'precursor') { token.classList.add('token-precursor'); token.style.backgroundColor = '#a855f7'; }
-                else if (s.renderType === 'asteroid') { token.classList.add('token-asteroid'); token.innerText = '✱'; tWidth = 24; tHeight = 24;}
-                else if (s.renderType === 'unknown') { token.classList.add('token-unknown'); token.innerText = '?'; }
+                if (s.renderType === 'derelict') { token.classList.add('token-derelict'); token.style.borderColor = "#10b981"; shadowStr = "0 0 10px rgba(16,185,129,0.3)"; }
+                else if (s.renderType === 'precursor') { token.classList.add('token-precursor'); token.style.backgroundColor = '#a855f7'; token.style.borderColor = 'transparent'; shadowStr="none";}
+                else if (s.renderType === 'asteroid') { token.classList.add('token-asteroid'); token.innerText = '✱'; tWidth = 24; tHeight = 24; token.style.borderColor = 'transparent'; shadowStr="none";}
+                else if (s.renderType === 'unknown') { token.classList.add('token-unknown'); token.innerText = '?'; token.style.borderColor = "#fff"; shadowStr = "0 0 10px rgba(255,255,255,0.3)";}
                 else if (s.renderType === 'planet') { token.style.borderColor = "#3b82f6"; shadowStr = "0 0 10px rgba(59,130,246,0.5)"; }
                 else if (s.renderType === 'anomaly') {
                     if (s.name.includes("Black Hole")) { 
@@ -675,7 +706,7 @@
 
             if (activeSector.connection && activeSector.connection.isShip) {
                 const npcShip = document.createElement('div');
-                npcShip.id = 'token-npc'; // Linked to hover event!
+                npcShip.id = 'token-npc'; 
                 npcShip.className = 'npc-ship-token';
                 const nPos = getHexPixel(activeSector.connection.x, activeSector.connection.y);
                 npcShip.style.left = nPos.x + 'px'; npcShip.style.top = nPos.y + 'px';
