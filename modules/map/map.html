@@ -31,14 +31,12 @@
         #starscape { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
         #map-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
         
-        /* THE GRID FADE: Simulating the edge of the gravity well */
         #grid-layer {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2;
             -webkit-mask-image: linear-gradient(to right, black 65%, transparent 100%);
             mask-image: linear-gradient(to right, black 65%, transparent 100%);
         }
 
-        /* Dynamic Tokens - Width/Height removed so JS can scale them! */
         .poi-token { 
             position: absolute; border-radius: 50%; 
             background: #000; border: 2px solid #00ff9d; transform: translate(-50%, -50%);
@@ -53,7 +51,6 @@
         .token-asteroid { background: transparent; border: none; color: #9ca3af; font-size: 20px; box-shadow: none; }
         .token-unknown { background: transparent; border: 1px dashed #fff; color: #fff; font-size: 12px; font-weight: bold; font-family: 'Share Tech Mono'; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
 
-        /* Label moved to bottom so it doesn't get covered by massive stars */
         .poi-label {
             position: absolute; top: calc(100% + 5px); left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.9); padding: 3px 6px; font-size: 10px;
@@ -95,6 +92,7 @@
             <option value="terminus">REGION: TERMINUS</option>
             <option value="outlands" selected>REGION: OUTLANDS</option>
             <option value="expanse">REGION: EXPANSE</option>
+            <option value="void">REGION: THE VOID</option>
         </select>
         <button id="btn-generate" onclick="generateSector()">GENERATE NEW SECTOR</button>
         
@@ -146,11 +144,12 @@
         let dragStartX = 0;
         let dragStartY = 0;
 
-        // NEW: Black Hole probabilities tied to regions!
+        // NEW: Void region added to rules! 100% Black Hole Chance!
         const REGION_RULES = {
             'terminus': { settlements: 6, passages: 4, bhChance: 0.02 },
             'outlands': { settlements: 5, passages: 3, bhChance: 0.15 },
-            'expanse':  { settlements: 4, passages: 2, bhChance: 0.30 }
+            'expanse':  { settlements: 4, passages: 2, bhChance: 0.30 },
+            'void':     { settlements: 2, passages: 1, bhChance: 1.00 }
         };
 
         const charNames = ["Jax", "Kaelen", "Lyra", "Voss", "Sira", "Tark", "Rian", "Cora", "Dax", "Elara", "Zane", "Nova", "Kian"];
@@ -268,7 +267,11 @@
                 else if (parts.length === 2) activeSector[parts[0]][parts[1]] = newValue;
             }
             statusMsg.innerText = "UPLINKING...";
-            await window.gLink.saveSectorServer(window.charId, activeSector.id, activeSector.name, JSON.stringify(activeSector));
+            
+            // NEW: Add the Region indicator tag to the index name!
+            const archiveName = `[${activeSector.region}] ${activeSector.name}`;
+            await window.gLink.saveSectorServer(window.charId, activeSector.id, archiveName, JSON.stringify(activeSector));
+            
             statusMsg.innerText = "STANDBY";
             refreshArchiveList(); renderSector(); 
         };
@@ -309,16 +312,14 @@
             const objectsToGen = rules.settlements + 4; 
             let starCount = 0;
 
-            // EDGE PADDING: Keep objects out of the outer 2 hexes on top, left, bottom. Right is open for Stars!
             const MIN_X = 2; const MAX_X_SAFE = bounds.w - 2; 
             const MIN_Y = 2; const MAX_Y = bounds.h - 2;
 
-            // Pass 1: Massive Gravity Wells (Stars & Black Holes)
+            // Pass 1: Massive Gravity Wells 
             for (let i = 0; i < objectsToGen; i++) {
                 if (starCount >= 2) break;
-                if (Math.random() > 0.4) continue; 
+                if (Math.random() > 0.4 && region !== 'void') continue; 
                 
-                // Stars/Black holes can spawn all the way to bounds.w (the visual edge bleed)
                 let x = Math.floor(Math.random() * 5) + (bounds.w - 4); 
                 let y = Math.floor(Math.random() * (MAX_Y - MIN_Y + 1)) + MIN_Y;
                 
@@ -328,10 +329,10 @@
                 }
                 if (!valid) continue;
 
-                // Check region rules for a Black Hole!
+                // NEW: Guarantee Black Hole syntax for physics
                 let isBlackHole = Math.random() < rules.bhChance;
                 let name = isBlackHole 
-                    ? rollOracle("anomaly_name", "Black Hole")
+                    ? "Black Hole (" + rollOracle("anomaly_name", "Void") + ")"
                     : rollOracle("anomaly_name", starRolls[Math.floor(Math.random() * starRolls.length)]);
 
                 sector.settlements.push({
@@ -352,7 +353,7 @@
                 }
             }
 
-            // Pass 2: Planets (Safe padded generation)
+            // Pass 2: Planets 
             for (let i = 0; i < objectsToGen; i++) {
                 if (Math.random() > 0.50) continue; 
                 
@@ -364,7 +365,6 @@
                     for (let s of sector.settlements) {
                         let reqDist = 2;
                         if (s.renderType === "anomaly") {
-                            // Massive 8-hex exclusion zone for Black Holes!
                             reqDist = s.name.includes("Black Hole") ? 8 : 5;
                         }
                         if (Math.hypot(s.x - x, s.y - y) < reqDist) { valid = false; break; }
@@ -400,7 +400,6 @@
 
                 for (let s of sector.settlements) {
                     if (s.x === x && s.y === y) valid = false;
-                    // Asteroids can get slightly closer to Black Holes than planets can (distance 5 instead of 8)
                     if (s.renderType === "anomaly" && Math.hypot(s.x - x, s.y - y) < 5) valid = false;
                 }
                 
@@ -414,7 +413,6 @@
 
             // Pass 4: General Clutter & The Void Graveyard mechanic
             while (sector.settlements.length < objectsToGen) {
-                // Roll WHAT we are placing first, so we know how close to a Black Hole it can survive
                 let rnd = Math.random();
                 let loc, name, renderType, pType = "N/A", auth = "N/A", proj = "N/A", pop = "None";
                 
@@ -438,9 +436,8 @@
                     for (let s of sector.settlements) {
                         if (Math.hypot(s.x - x, s.y - y) < 2) valid = false;
                         if (s.renderType === "anomaly") {
-                            let reqDist = 5; // Base star exclusion
+                            let reqDist = 5; 
                             if (s.name.includes("Black Hole")) {
-                                // Settlements die. Ruins/Derelicts can survive closer!
                                 reqDist = (renderType === "settlement") ? 8 : 4; 
                             }
                             if (Math.hypot(s.x - x, s.y - y) < reqDist) valid = false; 
@@ -484,7 +481,11 @@
             renderSector(); 
             
             statusMsg.innerText = "UPLINKING...";
-            await window.gLink.saveSectorServer(window.charId, sector.id, sector.name, JSON.stringify(activeSector));
+            
+            // NEW: Add the Region indicator tag to the index name!
+            const archiveName = `[${activeSector.region}] ${activeSector.name}`;
+            await window.gLink.saveSectorServer(window.charId, sector.id, archiveName, JSON.stringify(activeSector));
+            
             await refreshArchiveList();
             archiveSelect.value = sector.id; 
             statusMsg.innerText = "STANDBY";
@@ -709,7 +710,11 @@
             activeSector.ship.x = bestCoord.x; activeSector.ship.y = bestCoord.y;
             shipElement.style.left = bestPixel.x + 'px'; shipElement.style.top = bestPixel.y + 'px';
             statusMsg.innerText = "UPLINKING...";
-            await window.gLink.saveSectorServer(window.charId, activeSector.id, activeSector.name, JSON.stringify(activeSector));
+            
+            // Re-sync player ship dragging coordinates 
+            const archiveName = `[${activeSector.region}] ${activeSector.name}`;
+            await window.gLink.saveSectorServer(window.charId, activeSector.id, archiveName, JSON.stringify(activeSector));
+            
             statusMsg.innerText = "STANDBY";
         });
 
