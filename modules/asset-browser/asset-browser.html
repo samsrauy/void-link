@@ -67,7 +67,9 @@
 
         window.showCompendiumModal = function(nodeId) {
             if (!window.dataswornCore) return;
-            const node = window.dataswornCore.findNode(nodeId);
+            const cleanId = nodeId.replace(/^[a-zA-Z]+:/, '');
+            const node = window.dataswornCore.findNode(cleanId);
+            
             let modal = document.getElementById('compendium-modal');
             if (!modal) {
                 modal = document.createElement('div'); modal.id = 'compendium-modal';
@@ -77,7 +79,7 @@
                 document.body.appendChild(modal);
             }
             if (!node) {
-                document.getElementById('compendium-modal-title').innerText = "DATA NOT FOUND"; document.getElementById('compendium-modal-tag').innerText = "ERROR"; document.getElementById('compendium-modal-body').innerHTML = `The neural link to <span style="color:#ff0055;">${nodeId}</span> could not be established.`;
+                document.getElementById('compendium-modal-title').innerText = "DATA NOT FOUND"; document.getElementById('compendium-modal-tag').innerText = "ERROR"; document.getElementById('compendium-modal-body').innerHTML = `The neural link to <span style="color:#ff0055;">${cleanId}</span> could not be established.`;
             } else {
                 document.getElementById('compendium-modal-title').innerText = (node.name || "DATABANK ENTRY").toUpperCase(); document.getElementById('compendium-modal-tag').innerText = (node.type || "INFO").toUpperCase().replace(/_/g, ' '); document.getElementById('compendium-modal-body').innerHTML = window.formatMarkdown(node.text || node.description || "No data available.");
             }
@@ -91,9 +93,12 @@
 
         try {
             await window.dataswornReady;
+            
             const collections = window.dataswornCore.getAssets();
 
-            if (!collections) throw new Error("Data Core is active, but the 'assets' library could not be mapped.");
+            if (!collections) {
+                throw new Error("Data Core is active, but the 'assets' library could not be mapped.");
+            }
 
             catSelect.innerHTML = Object.keys(collections).sort().map(key => 
                 `<option value="${key}">${(collections[key].name || key).toUpperCase()}</option>`
@@ -101,7 +106,10 @@
 
             window.renderAssets = (catKey) => {
                 const assets = collections[catKey].contents;
-                if (!assets) { grid.innerHTML = `<div style="color:#ff0055;">No assets found.</div>`; return; }
+                if (!assets) {
+                    grid.innerHTML = `<div style="color:#ff0055;">No assets found.</div>`;
+                    return;
+                }
                 
                 grid.innerHTML = Object.values(assets).map(asset => {
                     const assetId = asset._id || asset.$id || asset.id;
@@ -137,7 +145,11 @@
         window.claimAsset = async function(assetId, name) {
             if (confirm(`Authorize installation of ${name}?`)) {
                 document.getElementById('status-msg').innerText = "TRANSMITTING...";
-                await window.gLink.logServer(window.charId, `Installed Asset: [${name}]`);
+                
+                if (window.gLink && typeof window.gLink.logServer === 'function') {
+                    await window.gLink.logServer(window.charId, `Installed Asset: [${name}]`);
+                }
+
                 const stats = await window.gLink.loadStatsServer(window.charId) || {};
                 let myAssets = stats.assets ? JSON.parse(stats.assets) : [];
                 
@@ -146,6 +158,7 @@
                     await window.gLink.saveStatServer(window.charId, "assets", JSON.stringify(myAssets));
                     window.dispatchEvent(new CustomEvent('assetsChanged'));
                 }
+
                 document.getElementById('status-msg').innerText = "MANIFEST UPDATED";
                 alert(`${name} successfully uplinked to character profile.`);
             }
