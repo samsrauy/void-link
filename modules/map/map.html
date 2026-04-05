@@ -23,39 +23,17 @@
         #map-scope .editable { border-bottom: 1px dashed #454d5d; cursor: text; outline: none; transition: 0.2s; display: inline-block; min-width: 20px; }
         #map-scope .editable:focus { border-bottom-color: #00ff9d; background: rgba(0,255,153,0.1); }
 
-        /* THE SCROLLBAR FIX */
+        /* THE INFINITE, HIDDEN VIEWPORT */
         #map-viewport { 
-            flex-grow: 1; position: relative; overflow: auto;
+            flex-grow: 1; position: relative; overflow: hidden; /* Hidden again! */
             background-color: #020204;
+            scroll-behavior: smooth; /* Makes programmatic scrolling glide natively */
         }
 
         /* Lock the internal universe size so it never cramps on a tablet */
         #starscape, #grid-layer, #passages-layer, #map-content, #ruler-layer {
             width: 1800px !important; 
             height: 1400px !important;
-        }
-
-        /* Custom Sci-Fi Scrollbars mapped to your Region Theme! */
-        #map-viewport::-webkit-scrollbar {
-            width: 12px;
-            height: 12px;
-        }
-        #map-viewport::-webkit-scrollbar-track {
-            background: #0b0d12;
-            border-left: 1px solid #1a1c23;
-            border-top: 1px solid #1a1c23;
-        }
-        #map-viewport::-webkit-scrollbar-thumb {
-            background: var(--theme-color);
-            border-radius: 2px;
-            opacity: 0.5;
-            border: 2px solid #0b0d12;
-        }
-        #map-viewport::-webkit-scrollbar-thumb:hover {
-            background: #fff;
-        }
-        #map-viewport::-webkit-scrollbar-corner {
-            background: #0b0d12;
         }
 
         #starscape { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 1; transition: background 1s; }
@@ -566,6 +544,22 @@
             else { statusMsg.innerText = "ARCHIVE CORRUPTED"; }
         };
 
+        window.panToHex = function(event, gx, gy) {
+            // If the user is trying to edit text or click a wiki link, do not pan the camera
+            if (event && (event.target.isContentEditable || event.target.tagName.toLowerCase() === 'a' || event.target.tagName.toLowerCase() === 'input')) return;
+
+            const targetPixel = getHexPixel(gx, gy);
+            const vWidth = viewport.clientWidth;
+            const vHeight = viewport.clientHeight;
+
+            // Command the hidden viewport to glide to the center of the target hex
+            viewport.scrollTo({
+                left: targetPixel.x - (vWidth / 2),
+                top: targetPixel.y - (vHeight / 2),
+                behavior: 'smooth'
+            });
+        };
+        
         window.highlightMapToken = function(id) {
             const token = document.getElementById(`token-${id}`);
             if (token) { 
