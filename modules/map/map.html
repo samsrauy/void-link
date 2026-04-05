@@ -1,13 +1,13 @@
 <div id="map-scope">
     <style>
-        #map-scope { width: 100%; height: 100%; background: #050508; color: #00ff9d; font-family: 'Exo 2', sans-serif; display: flex; position: relative; overflow: hidden; }
+        #map-scope { width: 100%; height: 100%; background: #050508; color: #00ff9d; font-family: 'Exo 2', sans-serif; display: flex; position: relative; overflow: hidden; transition: all 1s; }
         
         #map-scope #tactical-sidebar { 
             width: 380px; background: rgba(11, 13, 18, 0.95); border-right: 1px solid #1a1c23; 
             display: flex; flex-direction: column; z-index: 20; padding: 20px; box-sizing: border-box;
-            overflow-y: auto; font-size: 0.85rem;
+            overflow-y: auto; font-size: 0.85rem; transition: background 1s, border-color 1s;
         }
-        #map-scope .sidebar-header { font-size: 0.7rem; letter-spacing: 3px; color: #454d5d; border-bottom: 1px solid #1a1c23; padding-bottom: 5px; margin-bottom: 15px; text-transform: uppercase; display: flex; justify-content: space-between; }
+        #map-scope .sidebar-header { font-size: 0.7rem; letter-spacing: 3px; color: #454d5d; border-bottom: 1px solid #1a1c23; padding-bottom: 5px; margin-bottom: 15px; text-transform: uppercase; display: flex; justify-content: space-between; transition: color 1s; }
         
         #map-scope select, #map-scope button { 
             width: 100%; padding: 10px; background: #161922; color: #00ff9d; border: 1px solid #454d5d; 
@@ -23,12 +23,12 @@
         #map-scope .editable { border-bottom: 1px dashed #454d5d; cursor: text; outline: none; transition: 0.2s; display: inline-block; min-width: 20px; }
         #map-scope .editable:focus { border-bottom-color: #00ff9d; background: rgba(0,255,153,0.1); }
 
-        /* THE INFINITE, HIDDEN VIEWPORT */
+        /* THE INFINITE, HIDDEN VIEWPORT (Removed smooth scroll for drag-panning) */
         #map-viewport { 
-            flex-grow: 1; position: relative; overflow: hidden; /* Hides the scrollbars */
-            background-color: #020204;
-            scroll-behavior: smooth; /* Makes programmatic scrolling glide natively */
+            flex-grow: 1; position: relative; overflow: hidden; 
+            background-color: #020204; cursor: grab;
         }
+        #map-viewport:active { cursor: grabbing; }
 
         /* Lock the internal universe size */
         #starscape, #grid-layer, #passages-layer, #map-content, #ruler-layer {
@@ -43,6 +43,23 @@
             position: absolute; top: 0; left: 0; pointer-events: none; z-index: 2;
             -webkit-mask-image: linear-gradient(to right, black 65%, transparent 100%);
             mask-image: linear-gradient(to right, black 65%, transparent 100%);
+        }
+
+        /* --- VOID RED ALERT ANIMATIONS --- */
+        @keyframes voidPulse {
+            0% { box-shadow: inset 0 0 50px rgba(239, 68, 68, 0.05); }
+            100% { box-shadow: inset 0 0 150px rgba(239, 68, 68, 0.4); }
+        }
+        #map-scope.void-alert #map-viewport {
+            animation: voidPulse 1.5s infinite alternate ease-in-out;
+        }
+        #map-scope.void-alert #tactical-sidebar {
+            background: rgba(20, 5, 5, 0.98); 
+            border-right: 1px solid rgba(239, 68, 68, 0.4);
+        }
+        #map-scope.void-alert .sidebar-header {
+            color: #ef4444; 
+            text-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
         }
 
         .poi-token { 
@@ -148,6 +165,8 @@
         
         let activeSector = null;
         let isDragging = false;
+        let isPanning = false; // NEW: Map Pan tracker
+        let startPanX = 0, startPanY = 0, scrollL = 0, scrollT = 0; // NEW: Pan positions
         let shipElement = null;
         let dragStartX = 0;
         let dragStartY = 0;
@@ -571,14 +590,10 @@
         }
 
         window.panToHex = function(event, gx, gy) {
-            // If the user is trying to edit text or click a wiki link, do not pan the camera
             if (event && (event.target.isContentEditable || event.target.tagName.toLowerCase() === 'a' || event.target.tagName.toLowerCase() === 'input')) return;
-
             const targetPixel = getHexPixel(gx, gy);
             const vWidth = viewport.clientWidth;
             const vHeight = viewport.clientHeight;
-
-            // Command the hidden viewport to glide to the center of the target hex
             viewport.scrollTo({
                 left: targetPixel.x - (vWidth / 2),
                 top: targetPixel.y - (vHeight / 2),
@@ -597,6 +612,13 @@
 
             scope.style.setProperty('--theme-color', rColor.hex);
             scope.style.setProperty('--theme-bg', rColor.grid.replace('0.08', '0.1'));
+
+            // TRIGGER VOID RED ALERT
+            if (regKey === 'void') {
+                scope.classList.add('void-alert');
+            } else {
+                scope.classList.remove('void-alert');
+            }
 
             drawGrid(regKey);
             const bg = document.getElementById('starscape');
@@ -738,38 +760,72 @@
             shipElement.style.left = shipPos.x + 'px'; shipElement.style.top = shipPos.y + 'px';
             contentLayer.appendChild(shipElement);
 
-            shipElement.onmousedown = () => { isDragging = true; dragStartX = parseFloat(shipElement.style.left); dragStartY = parseFloat(shipElement.style.top); };
+            shipElement.onmousedown = () => { 
+                isDragging = true; dragStartX = parseFloat(shipElement.style.left); dragStartY = parseFloat(shipElement.style.top); 
+            };
         }
 
+        // --- NEW MAP PANNING AND DRAGGING LOGIC ---
+        viewport.addEventListener('mousedown', (e) => {
+            // Ignore if clicking a map token, the ship, or a label
+            if (e.target.closest('.poi-token') || e.target.closest('.npc-ship-token') || e.target.id === 'ship-token' || e.target.classList.contains('poi-label')) {
+                return; 
+            }
+            // Otherwise, start panning the camera
+            isPanning = true;
+            viewport.style.cursor = 'grabbing';
+            startPanX = e.pageX - viewport.offsetLeft;
+            startPanY = e.pageY - viewport.offsetTop;
+            scrollL = viewport.scrollLeft;
+            scrollT = viewport.scrollTop;
+        });
+
         viewport.addEventListener('mousemove', (e) => {
-            if (!isDragging || !shipElement) return;
-            const rect = viewport.getBoundingClientRect();
-            
-            // Fix: calculate raw offset considering the scroll position!
-            const rawX = e.clientX - rect.left + viewport.scrollLeft;
-            const rawY = e.clientY - rect.top + viewport.scrollTop;
+            // Priority 1: Move the ship if we clicked it
+            if (isDragging && shipElement) {
+                const rect = viewport.getBoundingClientRect();
+                const rawX = e.clientX - rect.left + viewport.scrollLeft;
+                const rawY = e.clientY - rect.top + viewport.scrollTop;
 
-            shipElement.style.left = rawX + 'px'; shipElement.style.top = rawY + 'px';
-            rulerLine.setAttribute('x1', dragStartX); rulerLine.setAttribute('y1', dragStartY);
-            rulerLine.setAttribute('x2', rawX); rulerLine.setAttribute('y2', rawY);
-            rulerLine.style.display = 'block';
+                shipElement.style.left = rawX + 'px'; shipElement.style.top = rawY + 'px';
+                rulerLine.setAttribute('x1', dragStartX); rulerLine.setAttribute('y1', dragStartY);
+                rulerLine.setAttribute('x2', rawX); rulerLine.setAttribute('y2', rawY);
+                rulerLine.style.display = 'block';
 
-            const midX = (dragStartX + rawX) / 2, midY = (dragStartY + rawY) / 2;
-            rulerText.setAttribute('x', midX); rulerText.setAttribute('y', midY);
-            rulerText.textContent = (Math.hypot(rawX - dragStartX, rawY - dragStartY) / (HEX_RADIUS * Math.sqrt(3))).toFixed(1) + ' Units';
-            rulerText.style.display = 'block';
-            rulerBg.setAttribute('x', midX - 35); rulerBg.setAttribute('y', midY - 10);
-            rulerBg.setAttribute('width', 70); rulerBg.setAttribute('height', 20);
-            rulerBg.style.display = 'block';
+                const midX = (dragStartX + rawX) / 2, midY = (dragStartY + rawY) / 2;
+                rulerText.setAttribute('x', midX); rulerText.setAttribute('y', midY);
+                rulerText.textContent = (Math.hypot(rawX - dragStartX, rawY - dragStartY) / (HEX_RADIUS * Math.sqrt(3))).toFixed(1) + ' Units';
+                rulerText.style.display = 'block';
+                rulerBg.setAttribute('x', midX - 35); rulerBg.setAttribute('y', midY - 10);
+                rulerBg.setAttribute('width', 70); rulerBg.setAttribute('height', 20);
+                rulerBg.style.display = 'block';
+                return;
+            }
+
+            // Priority 2: Pan the map if we clicked empty space
+            if (isPanning) {
+                e.preventDefault(); // Stop text highlighting while dragging
+                const x = e.pageX - viewport.offsetLeft;
+                const y = e.pageY - viewport.offsetTop;
+                const walkX = (x - startPanX) * 1.5; // Multiply for faster panning
+                const walkY = (y - startPanY) * 1.5;
+                viewport.scrollLeft = scrollL - walkX;
+                viewport.scrollTop = scrollT - walkY;
+            }
         });
 
         viewport.addEventListener('mouseup', async (e) => {
+            if (isPanning) {
+                isPanning = false;
+                viewport.style.cursor = 'grab';
+                return;
+            }
+
             if (!isDragging || !activeSector) return;
             isDragging = false;
             rulerLine.style.display = 'none'; rulerText.style.display = 'none'; rulerBg.style.display = 'none';
             
             const rect = viewport.getBoundingClientRect();
-            // Fix: calculate raw offset considering the scroll position!
             const rawX = e.clientX - rect.left + viewport.scrollLeft;
             const rawY = e.clientY - rect.top + viewport.scrollTop;
             
@@ -793,7 +849,10 @@
         });
 
         viewport.addEventListener('mouseleave', () => { 
-            isDragging = false; rulerLine.style.display = 'none'; rulerText.style.display = 'none'; rulerBg.style.display = 'none';
+            isDragging = false; 
+            isPanning = false;
+            viewport.style.cursor = 'grab';
+            rulerLine.style.display = 'none'; rulerText.style.display = 'none'; rulerBg.style.display = 'none';
         });
 
         initMap();
