@@ -35,6 +35,43 @@
 </div>
 
 <script>
+    // --- GLOBAL VOID-LINK MARKDOWN & MODAL ENGINE ---
+    if (!window.voidLinkMarkdownEngine) {
+        window.voidLinkMarkdownEngine = true;
+        window.formatMarkdown = function(txt) {
+            if (!txt) return "";
+            let html = txt;
+            const links = [];
+            html = html.replace(/\[(.*?)\]\((.*?)\)/g, (m, text, url) => { links.push({ text, url }); return `%%LINK_${links.length - 1}%%`; });
+            html = html.replace(/\*\*(.*?)\*\*/g, '<b style="color:#bcdee7;">$1</b>');
+            html = html.replace(/__(.*?)__/g, '<b style="color:#bcdee7;">$1</b>');
+            html = html.replace(/(?<!\w)\*(.*?)\*(?!\w)/g, '<i>$1</i>');
+            html = html.replace(/(?<!\w)_(.*?)_(?!\w)/g, '<i>$1</i>'); 
+            html = html.replace(/\n/g, '<br>');
+            html = html.replace(/%%LINK_(\d+)%%/g, (m, i) => `<span style="color:#00ff9d; cursor:pointer; text-decoration:underline dashed; text-underline-offset: 3px;" onclick="showCompendiumModal('${links[i].url}')">${links[i].text}</span>`);
+            return html;
+        };
+
+        window.showCompendiumModal = function(nodeId) {
+            if (!window.dataswornCore) return;
+            const node = window.dataswornCore.findNode(nodeId);
+            let modal = document.getElementById('compendium-modal');
+            if (!modal) {
+                modal = document.createElement('div'); modal.id = 'compendium-modal';
+                modal.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(5,5,8,0.9); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(5px);";
+                modal.onclick = function(e) { if (e.target === modal) modal.style.display = 'none'; };
+                modal.innerHTML = `<div style="background:#161922; border:2px solid #00ff9d; padding:30px; max-width:500px; width:90%; max-height:80vh; overflow-y:auto; position:relative; box-shadow: 0 0 30px rgba(0,255,153,0.2); font-family:'Exo 2', sans-serif;"><button onclick="document.getElementById('compendium-modal').style.display='none'" style="position:absolute; top:10px; right:10px; background:transparent; border:none; color:#ff0055; cursor:pointer; font-size:1.2rem; font-family:'Share Tech Mono';">X</button><div id="compendium-modal-tag" style="font-size:0.7rem; color:#ff0055; letter-spacing:2px; margin-bottom:5px; font-family:'Share Tech Mono';"></div><h2 id="compendium-modal-title" style="color:#00ff9d; font-family:'Share Tech Mono'; margin-top:0; border-bottom:1px solid #454d5d; padding-bottom:10px;"></h2><div id="compendium-modal-body" style="color:#aab; font-size:0.9rem; line-height:1.5;"></div></div>`;
+                document.body.appendChild(modal);
+            }
+            if (!node) {
+                document.getElementById('compendium-modal-title').innerText = "DATA NOT FOUND"; document.getElementById('compendium-modal-tag').innerText = "ERROR"; document.getElementById('compendium-modal-body').innerHTML = `The neural link to <span style="color:#ff0055;">${nodeId}</span> could not be established.`;
+            } else {
+                document.getElementById('compendium-modal-title').innerText = (node.name || "DATABANK ENTRY").toUpperCase(); document.getElementById('compendium-modal-tag').innerText = (node.type || "INFO").toUpperCase().replace(/_/g, ' '); document.getElementById('compendium-modal-body').innerHTML = window.formatMarkdown(node.text || node.description || "No data available.");
+            }
+            modal.style.display = 'flex';
+        };
+    }
+
     (function() {
         const scope = document.getElementById('tracker-scope');
         let myAssets = [];
@@ -60,7 +97,6 @@
 
             container.innerHTML = '';
             myAssets.forEach((entry, index) => {
-                // Use the new Core API to find the specific asset
                 const assetData = window.dataswornCore.findNode(entry.id);
                 if (!assetData) return;
 
@@ -73,7 +109,7 @@
                         <div class="ability-row">
                             <div class="ability-check ${entry.enabled.includes(i) ? 'active' : ''}" 
                                  onclick="toggleAbility(${index}, ${i})"></div>
-                            <span>${ab.text}</span>
+                            <span>${window.formatMarkdown(ab.text)}</span>
                         </div>
                     `).join('')}
                 `;
@@ -106,14 +142,6 @@
             scope.querySelector('#sync-status').innerText = "SYSTEM ONLINE";
         }
 
-        initTracker();
-        async function syncAssetChanges() {
-            scope.querySelector('#sync-status').innerText = "UPLINKING...";
-            await window.gLink.saveStatServer(window.charId, "assets", JSON.stringify(myAssets));
-            scope.querySelector('#sync-status').innerText = "SYSTEM ONLINE";
-        }
-
-        // Listens for the broadcast from the asset-browser and reloads the tracker
         window.addEventListener('assetsChanged', () => {
             initTracker();
         });
