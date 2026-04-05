@@ -31,26 +31,34 @@
         #starscape { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
         #map-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
         
+        /* THE GRID FADE: Simulating the edge of the gravity well */
+        #grid-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2;
+            -webkit-mask-image: linear-gradient(to right, black 65%, transparent 100%);
+            mask-image: linear-gradient(to right, black 65%, transparent 100%);
+        }
+
+        /* Dynamic Tokens - Width/Height removed so JS can scale them! */
         .poi-token { 
-            position: absolute; width: 16px; height: 16px; border-radius: 50%; 
+            position: absolute; border-radius: 50%; 
             background: #000; border: 2px solid #00ff9d; transform: translate(-50%, -50%);
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; transition: 0.2s; box-shadow: 0 0 10px rgba(0,255,153,0.3);
             pointer-events: auto; z-index: 15;
         }
-        .poi-token:hover { transform: translate(-50%, -50%) scale(1.5); box-shadow: 0 0 15px #00ff9d; z-index: 20; }
+        .poi-token:hover { transform: translate(-50%, -50%) scale(1.3); z-index: 30 !important; }
         
-        /* New Space Clutter Tokens */
         .token-derelict { border-radius: 2px; border-color: #10b981; background: #064e3b; box-shadow: 0 0 10px rgba(16,185,129,0.3); }
         .token-precursor { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); border-radius: 0; background: #3b0764; box-shadow: none; border: none; }
         .token-asteroid { background: transparent; border: none; color: #9ca3af; font-size: 20px; box-shadow: none; }
         .token-unknown { background: transparent; border: 1px dashed #fff; color: #fff; font-size: 12px; font-weight: bold; font-family: 'Share Tech Mono'; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
 
+        /* Label moved to bottom so it doesn't get covered by massive stars */
         .poi-label {
-            position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.8); padding: 2px 5px; font-size: 10px;
+            position: absolute; top: calc(100% + 5px); left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.9); padding: 3px 6px; font-size: 10px;
             font-family: 'Share Tech Mono'; color: #fff; border: 1px solid #454d5d; pointer-events: none;
-            white-space: nowrap; border-radius: 2px;
+            white-space: nowrap; border-radius: 2px; z-index: 20;
         }
 
         #ship-token {
@@ -60,11 +68,10 @@
             display: flex; align-items: center; justify-content: center;
             clip-path: polygon(50% 0%, 100% 100%, 50% 80%, 0% 100%);
             box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
-            pointer-events: auto; transition: transform 0.1s; z-index: 25;
+            pointer-events: auto; transition: transform 0.1s; z-index: 40;
         }
         #ship-token:active { cursor: grabbing; border-color: #ff0055; background: rgba(255,0,85,0.3); transform: translate(-50%, -50%) scale(1.2); }
 
-        /* NPC Ship Token */
         .npc-ship-token {
             position: absolute; width: 16px; height: 16px; 
             background: rgba(251, 191, 36, 0.2); border: 2px solid #f59e0b; 
@@ -105,7 +112,7 @@
 
     <div id="map-viewport">
         <div id="starscape"></div>
-        <svg id="grid-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2;"></svg>
+        <svg id="grid-layer"></svg>
         <svg id="passages-layer"></svg>
         <div id="map-content"></div>
         
@@ -151,7 +158,7 @@
 
         const locRolls = ["Deep Space Station", "Orbital Habitat", "Asteroid Base", "Planetary Settlement", "Gas Giant Refinery"];
         const planetRolls = ["Desert World", "Ice World", "Furnace World", "Jungle World", "Ocean World", "Rocky World", "Toxic World", "Shattered World"];
-        const anomalyRolls = ["Black Hole", "Neutron Star", "Red Dwarf Star", "Pulsar"]; // Nebulas handled separately now
+        const anomalyRolls = ["Black Hole", "Neutron Star", "Red Dwarf Star", "Pulsar", "Main Sequence Star"];
 
         const WIKI_LINKS = {
             "Black Hole": "https://en.wikipedia.org/wiki/Black_hole",
@@ -160,6 +167,7 @@
             "Ion Storm": "https://en.wikipedia.org/wiki/Geomagnetic_storm", 
             "Stellar Nebula": "https://en.wikipedia.org/wiki/Nebula",
             "Red Dwarf Star": "https://en.wikipedia.org/wiki/Red_dwarf",
+            "Main Sequence Star": "https://en.wikipedia.org/wiki/Main_sequence",
             "Pulsar": "https://en.wikipedia.org/wiki/Pulsar"
         };
 
@@ -272,26 +280,27 @@
 
             let sName = rollOracle("sector_name", secPrefix[Math.floor(Math.random()*secPrefix.length)] + " " + secSuffix[Math.floor(Math.random()*secSuffix.length)]);
             
-            // Generate Environmental Background (Nebula)
-            let isNebula = Math.random() < 0.35;
+            // Generate Environmental Background (Nebula) - MASSIVELY Upgraded
+            let isNebula = Math.random() < 0.45;
             let nebulaData = null;
             if (isNebula) {
                 const colors = [
-                    "rgba(139, 92, 246, 0.15)", // Purple
-                    "rgba(59, 130, 246, 0.15)", // Blue
-                    "rgba(16, 185, 129, 0.15)", // Green
-                    "rgba(244, 63, 94, 0.15)"   // Rose
+                    "rgba(139, 92, 246, 0.5)", // Purple
+                    "rgba(59, 130, 246, 0.5)", // Blue
+                    "rgba(16, 185, 129, 0.4)", // Green
+                    "rgba(244, 63, 94, 0.5)"   // Rose
                 ];
                 nebulaData = {
                     name: "Stellar Nebula",
-                    x: Math.floor(Math.random() * 60) + 20, 
-                    y: Math.floor(Math.random() * 60) + 20,
-                    size: Math.floor(Math.random() * 40) + 30,
+                    x: Math.floor(Math.random() * 40) + 30, // Keep mostly central
+                    y: Math.floor(Math.random() * 40) + 30,
+                    size: Math.floor(Math.random() * 60) + 50, // Massive sizes (50vw to 110vw)
                     color: colors[Math.floor(Math.random() * colors.length)]
                 };
             }
 
-            const bounds = { w: 18, h: 12 }; 
+            // Expanded Bounds to match visual grid
+            const bounds = { w: 34, h: 22 }; 
             const sector = {
                 id: 'sec_' + Date.now(), 
                 name: sName, region: region.toUpperCase(),
@@ -301,21 +310,23 @@
                 ship: { x: 0, y: 0 }
             };
 
-            // NEW MULTI-PASS GENERATION ALGORITHM
             let idCounter = 0;
-            const objectsToGen = rules.settlements + 3; // Enforce minimum clutter
+            const objectsToGen = rules.settlements + 4; 
+            let starCount = 0;
 
-            // Pass 1: Massive Gravity Wells (Stars & Black Holes)
+            // Pass 1: Massive Gravity Wells (Max 2, Right Edge Only)
             for (let i = 0; i < objectsToGen; i++) {
-                if (Math.random() > 0.25) continue; // Only 25% chance per slot to be a star
+                if (starCount >= 2) break;
+                if (Math.random() > 0.4) continue; 
                 
-                let x = Math.floor(Math.random() * bounds.w) + 1;
+                // Force X to be in the rightmost 8 hex columns (26 to 34)
+                let x = Math.floor(Math.random() * 8) + (bounds.w - 7); 
                 let y = Math.floor(Math.random() * bounds.h) + 1;
                 
-                // Enforce massive exclusion zone (4 hexes) so nothing spawns near it
+                // Enforce massive exclusion zone (5 hexes)
                 let valid = true;
                 for (let s of sector.settlements) {
-                    if (Math.hypot(s.x - x, s.y - y) < 4) { valid = false; break; }
+                    if (Math.hypot(s.x - x, s.y - y) < 5) { valid = false; break; }
                 }
                 if (!valid) continue;
 
@@ -324,28 +335,33 @@
                     id: idCounter++, x: x, y: y, name: name, location: "Stellar Anomaly",
                     population: "None", authority: "N/A", projects: "N/A", planet: "N/A", renderType: "anomaly"
                 });
+                starCount++;
 
-                // 20% chance for Binary Star System! Drops right next to it.
-                if (name.includes("Star") && Math.random() < 0.20) {
-                    sector.settlements.push({
-                        id: idCounter++, x: x+1, y: y, name: "Binary Companion", location: "Stellar Anomaly",
-                        population: "None", authority: "N/A", projects: "N/A", planet: "N/A", renderType: "anomaly"
-                    });
+                // 25% chance for Binary Star System! Locks right next to it.
+                if ((name.includes("Star") || name.includes("Hole")) && Math.random() < 0.25) {
+                    if (starCount < 2) {
+                        sector.settlements.push({
+                            id: idCounter++, x: x - 1, y: y + (Math.random() > 0.5 ? 1 : -1), 
+                            name: rollOracle("anomaly_name", anomalyRolls[Math.floor(Math.random() * anomalyRolls.length)]), 
+                            location: "Stellar Anomaly", population: "None", authority: "N/A", projects: "N/A", planet: "N/A", renderType: "anomaly"
+                        });
+                        starCount++;
+                    }
                 }
             }
 
-            // Pass 2: Planets
+            // Pass 2: Planets (Kept away from Gravity Wells)
             for (let i = 0; i < objectsToGen; i++) {
-                if (Math.random() > 0.40) continue; // 40% chance
+                if (Math.random() > 0.50) continue; 
                 
                 let attempts = 0, valid = false, x, y;
                 while (!valid && attempts < 50) {
-                    x = Math.floor(Math.random() * bounds.w) + 1;
+                    x = Math.floor(Math.random() * (bounds.w - 8)) + 1; // Keep away from right edge
                     y = Math.floor(Math.random() * bounds.h) + 1;
                     valid = true;
-                    // Planets need to be 3 spaces away from gravity wells, 2 from other planets
+                    // Planets need to be far from gravity wells, but can be near each other
                     for (let s of sector.settlements) {
-                        let reqDist = s.renderType === "anomaly" ? 3 : 2;
+                        let reqDist = s.renderType === "anomaly" ? 5 : 2;
                         if (Math.hypot(s.x - x, s.y - y) < reqDist) { valid = false; break; }
                     }
                     attempts++;
@@ -363,25 +379,24 @@
 
             // Pass 3: Asteroid Swarms (Bias toward Planets)
             for (let i = 0; i < objectsToGen; i++) {
-                if (Math.random() > 0.3) continue;
+                if (Math.random() > 0.4) continue;
                 
                 let x, y, valid = true;
-                
-                // 50% chance to intentionally spawn next to a planet (simulating rings/orbital debris)
                 const planets = sector.settlements.filter(s => s.renderType === "planet");
-                if (planets.length > 0 && Math.random() < 0.5) {
+                
+                if (planets.length > 0 && Math.random() < 0.6) {
+                    // 60% chance to orbit a planet
                     let target = planets[Math.floor(Math.random() * planets.length)];
                     x = target.x + (Math.random() > 0.5 ? 1 : -1);
-                    y = target.y;
+                    y = target.y + (Math.random() > 0.5 ? 1 : 0);
                 } else {
-                    x = Math.floor(Math.random() * bounds.w) + 1;
+                    x = Math.floor(Math.random() * (bounds.w - 8)) + 1;
                     y = Math.floor(Math.random() * bounds.h) + 1;
                 }
 
-                // Make sure it doesn't spawn ON TOP of something else, or near a black hole
                 for (let s of sector.settlements) {
                     if (s.x === x && s.y === y) valid = false;
-                    if (s.renderType === "anomaly" && Math.hypot(s.x - x, s.y - y) < 3) valid = false;
+                    if (s.renderType === "anomaly" && Math.hypot(s.x - x, s.y - y) < 4) valid = false;
                 }
                 
                 if(valid) {
@@ -392,15 +407,16 @@
                 }
             }
 
-            // Pass 4: Everything Else (Stations, Derelicts, Precursors)
+            // Pass 4: General Clutter (Stations, Derelicts, Precursors)
             while (sector.settlements.length < objectsToGen) {
                 let x, y, valid = false, attempts = 0;
                 while (!valid && attempts < 50) {
-                    x = Math.floor(Math.random() * bounds.w) + 1;
+                    x = Math.floor(Math.random() * (bounds.w - 6)) + 1;
                     y = Math.floor(Math.random() * bounds.h) + 1;
                     valid = true;
                     for (let s of sector.settlements) {
                         if (Math.hypot(s.x - x, s.y - y) < 2) valid = false;
+                        if (s.renderType === "anomaly" && Math.hypot(s.x - x, s.y - y) < 5) valid = false; // Star exclusion
                     }
                     attempts++;
                 }
@@ -411,7 +427,7 @@
                     
                     if (rnd < 0.2) { loc = "Derelict Spacecraft"; name = "Unknown Ghost Ship"; renderType = "derelict"; }
                     else if (rnd < 0.4) { loc = "Precursor Vault"; name = "Alien Construct"; renderType = "precursor"; }
-                    else if (rnd < 0.6) { loc = "Anomalous Signature"; name = "Unknown Contact"; renderType = "unknown"; }
+                    else if (rnd < 0.5) { loc = "Anomalous Signature"; name = "Unknown Contact"; renderType = "unknown"; }
                     else {
                         loc = rollOracle("settlement_location", locRolls[Math.floor(Math.random() * locRolls.length)]);
                         name = rollOracle("settlement_name", `Outpost ${idCounter}`);
@@ -424,10 +440,10 @@
                         id: idCounter++, x: x, y: y, name: name, location: loc,
                         population: pop, authority: auth, projects: proj, planet: pType, renderType: renderType
                     });
-                } else { break; } // Map is full
+                } else { break; } 
             }
 
-            // Passages & Connections
+            // Connect only planets and stations
             const trueSettlements = sector.settlements.filter(s => s.renderType === "settlement" || s.renderType === "planet");
             let passageCount = 0;
             if (trueSettlements.length > 1) {
@@ -445,11 +461,11 @@
                 role: rollOracle("character_role", "Scavenger"), rank: "Dangerous",
                 home: connIsShip ? "Independent Starship" : (trueSettlements[0]?.name || "Nomad"),
                 isShip: connIsShip,
-                x: connIsShip ? Math.floor(Math.random() * bounds.w)+1 : 0, 
+                x: connIsShip ? Math.floor(Math.random() * (bounds.w - 8))+1 : 0, 
                 y: connIsShip ? Math.floor(Math.random() * bounds.h)+1 : 0
             };
 
-            sector.ship = { x: 5, y: 5 }; // Safe default start
+            sector.ship = { x: 5, y: 5 }; // Safe start
             
             activeSector = sector;
             renderSector(); 
@@ -470,18 +486,27 @@
             else { statusMsg.innerText = "ARCHIVE CORRUPTED"; }
         };
 
-        // NEW: Hover Link Functions
         window.highlightMapToken = function(id) {
             const token = document.getElementById(`token-${id}`);
-            if (token) { token.style.transform = 'translate(-50%, -50%) scale(1.5)'; token.style.boxShadow = '0 0 20px #fff'; token.style.zIndex = '30'; }
+            if (token) { 
+                token.dataset.origTransform = token.style.transform;
+                token.style.transform = 'translate(-50%, -50%) scale(1.5)'; 
+                token.style.zIndex = '50'; 
+                token.style.boxShadow = '0 0 25px #fff';
+            }
         }
         window.unhighlightMapToken = function(id) {
             const token = document.getElementById(`token-${id}`);
-            if (token) { token.style.transform = ''; token.style.boxShadow = ''; token.style.zIndex = ''; }
+            // Re-render sector safely clears styles, but we can quick-revert here
+            if (token) { 
+                token.style.transform = token.dataset.origTransform || 'translate(-50%, -50%)'; 
+                token.style.zIndex = ''; 
+                token.style.boxShadow = token.dataset.origShadow || '';
+            }
         }
         window.highlightSidebarCard = function(id) {
             const card = document.getElementById(`card-${id}`);
-            if (card) { card.style.borderColor = '#fff'; card.style.backgroundColor = '#1f2937'; card.scrollIntoView({behavior: "smooth", block: "nearest"}); }
+            if (card) { card.style.borderColor = '#00ff9d'; card.style.backgroundColor = '#1f2937'; card.scrollIntoView({behavior: "smooth", block: "nearest"}); }
         }
         window.unhighlightSidebarCard = function(id) {
             const card = document.getElementById(`card-${id}`);
@@ -493,9 +518,8 @@
             passagesLayer.innerHTML = '';
             infoContainer.innerHTML = '';
 
-            // 1. Draw Nebula Background
             const bg = document.getElementById('starscape');
-            generateStarscape(); // Reset base stars
+            generateStarscape(); 
             if (activeSector.nebula) {
                 const neb = document.createElement('div');
                 neb.style.position = 'absolute';
@@ -504,7 +528,8 @@
                 neb.style.width = activeSector.nebula.size + 'vw';
                 neb.style.height = activeSector.nebula.size + 'vw';
                 neb.style.transform = 'translate(-50%, -50%)';
-                neb.style.background = `radial-gradient(circle, ${activeSector.nebula.color} 0%, transparent 70%)`;
+                neb.style.background = `radial-gradient(circle, ${activeSector.nebula.color} 0%, transparent 65%)`;
+                neb.style.filter = 'blur(40px)';
                 neb.style.pointerEvents = 'none';
                 neb.style.zIndex = '0';
                 bg.appendChild(neb);
@@ -538,9 +563,8 @@
                         : `<div class="data-text" style="color:#fbbf24;"><b>Planet:</b> ${s.planet}</div>`;
                 }
 
-                // Add mouse events to the Card
                 html += `
-                    <div id="card-${s.id}" class="data-card" onmouseenter="highlightMapToken(${s.id})" onmouseleave="unhighlightMapToken(${s.id})">
+                    <div id="card-${s.id}" class="data-card" style="transition: 0.3s;" onmouseenter="highlightMapToken(${s.id})" onmouseleave="unhighlightMapToken(${s.id})">
                         ${titleHtml}
                         <div class="data-text"><b>Loc:</b> ${s.location}</div>
                         ${s.authority !== 'N/A' ? `<div class="data-text"><b>Auth:</b> <span class="editable" contenteditable="true" spellcheck="false" onblur="editSectorField('authority', this.innerText, true, ${idx})">${s.authority}</span></div>` : ''}
@@ -549,7 +573,6 @@
                     </div>
                 `;
 
-                // Render Map Token
                 const token = document.createElement('div');
                 token.id = `token-${s.id}`;
                 token.className = 'poi-token';
@@ -557,20 +580,41 @@
                 token.style.left = pos.x + 'px';
                 token.style.top = pos.y + 'px';
 
-                // Add mouse events to Token
                 token.onmouseenter = () => highlightSidebarCard(s.id);
                 token.onmouseleave = () => unhighlightSidebarCard(s.id);
 
-                if (s.renderType === 'derelict') token.classList.add('token-derelict');
+                // DYNAMIC SCALING FOR PHYSICS
+                let tWidth = 16;
+                let tHeight = 16;
+                let shadowStr = "0 0 10px rgba(0,255,153,0.3)";
+
+                if (s.renderType === 'derelict') { token.classList.add('token-derelict'); }
                 else if (s.renderType === 'precursor') { token.classList.add('token-precursor'); token.style.backgroundColor = '#a855f7'; }
-                else if (s.renderType === 'asteroid') { token.classList.add('token-asteroid'); token.innerText = '✱'; }
+                else if (s.renderType === 'asteroid') { token.classList.add('token-asteroid'); token.innerText = '✱'; tWidth = 24; tHeight = 24;}
                 else if (s.renderType === 'unknown') { token.classList.add('token-unknown'); token.innerText = '?'; }
-                else if (s.renderType === 'planet') { token.style.borderColor = "#3b82f6"; token.style.boxShadow = "0 0 10px rgba(59,130,246,0.3)"; }
+                else if (s.renderType === 'planet') { token.style.borderColor = "#3b82f6"; shadowStr = "0 0 10px rgba(59,130,246,0.5)"; }
                 else if (s.renderType === 'anomaly') {
-                    if (s.name.includes("Black Hole")) { token.style.borderColor = "#8b5cf6"; token.style.backgroundColor = "#1e1b4b"; token.style.boxShadow = "0 0 15px #8b5cf6"; } 
-                    else if (s.name.includes("Star") || s.name.includes("Pulsar")) { token.style.borderColor = "#fcd34d"; token.style.backgroundColor = "#b45309"; token.style.boxShadow = "0 0 20px #fcd34d"; } 
-                    else { token.style.borderColor = "#a8a29e"; token.style.boxShadow = "0 0 10px rgba(168,162,158,0.3)"; }
+                    if (s.name.includes("Black Hole")) { 
+                        tWidth = 80; tHeight = 80; // Massive
+                        token.style.borderColor = "#8b5cf6"; token.style.backgroundColor = "#000"; 
+                        shadowStr = "0 0 40px #8b5cf6"; 
+                    } else if (s.name.includes("Star")) { 
+                        tWidth = 120; tHeight = 120; // Super Massive
+                        token.style.borderColor = "#fcd34d"; token.style.backgroundColor = "#b45309"; 
+                        shadowStr = "0 0 60px #fcd34d"; 
+                    } else if (s.name.includes("Pulsar") || s.name.includes("Neutron")) {
+                        tWidth = 40; tHeight = 40; // Dense but small
+                        token.style.borderColor = "#38bdf8"; token.style.backgroundColor = "#fff"; 
+                        shadowStr = "0 0 30px #38bdf8"; 
+                    } else { 
+                        token.style.borderColor = "#a8a29e"; shadowStr = "0 0 10px rgba(168,162,158,0.3)"; 
+                    }
                 }
+
+                token.style.width = tWidth + 'px';
+                token.style.height = tHeight + 'px';
+                token.style.boxShadow = shadowStr;
+                token.dataset.origShadow = shadowStr; // Save for hover resets
 
                 const labelDiv = document.createElement('div');
                 labelDiv.className = 'poi-label';
@@ -594,11 +638,19 @@
                 passagesLayer.appendChild(line);
             });
 
+            if (activeSector.connection && activeSector.connection.isShip) {
+                const npcShip = document.createElement('div');
+                npcShip.className = 'npc-ship-token';
+                const nPos = getHexPixel(activeSector.connection.x, activeSector.connection.y);
+                npcShip.style.left = nPos.x + 'px'; npcShip.style.top = nPos.y + 'px';
+                const nLabel = document.createElement('div'); nLabel.className = 'poi-label'; nLabel.innerText = activeSector.connection.name;
+                npcShip.appendChild(nLabel); contentLayer.appendChild(npcShip);
+            }
+
             shipElement = document.createElement('div');
             shipElement.id = 'ship-token';
             const shipPos = getHexPixel(activeSector.ship.x, activeSector.ship.y);
-            shipElement.style.left = shipPos.x + 'px';
-            shipElement.style.top = shipPos.y + 'px';
+            shipElement.style.left = shipPos.x + 'px'; shipElement.style.top = shipPos.y + 'px';
             contentLayer.appendChild(shipElement);
 
             shipElement.onmousedown = () => { isDragging = true; dragStartX = parseFloat(shipElement.style.left); dragStartY = parseFloat(shipElement.style.top); };
