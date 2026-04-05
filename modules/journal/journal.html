@@ -74,33 +74,10 @@
     </div>
 
     <div id="terminal-output">
-        
-        <div style="display: flex; flex-direction: row; width: 100%; align-items: flex-start; margin-bottom: 20px; flex-shrink: 0;">
-            
-            <div style="flex: 1;">
-                <div class="log-entry sys-text">
-                    > INITIALIZING WEAVE PROTOCOL...<br>
-                    > ENCRYPTION HANDSHAKE VERIFIED.<br>
-                    > AWAITING CAPTAIN'S LOG INPUT...
-                </div>
-            </div>
-            
-            <div style="flex: 0 0 auto; width: 100%; max-width: 450px; background: #1a1c23; border: 1px solid #454d5d; padding: 15px; border-left: 4px solid #3b82f6; font-family: 'Exo 2', sans-serif;">
-                <div style="font-size: 0.7rem; color: #3b82f6; letter-spacing: 2px; margin-bottom: 10px; font-family: 'Share Tech Mono';">ACTION ROLL COMPUTER</div>
-        
-                <div style="display: flex; gap: 10px; align-items: center;">
-                    <div style="flex-grow: 1;">
-                        <label style="font-size: 0.8rem; color: #aab; display: block; margin-bottom: 5px;">TOTAL ADDS (Stat + Bonuses)</label>
-                        <input type="number" id="dice-modifier" value="0" style="width: 100%; padding: 8px; background: #0b0d12; border: 1px solid #454d5d; color: #fff; text-align: center; font-size: 1.2rem; font-family: 'Share Tech Mono';">
-                    </div>
-            
-                    <button onclick="executeActionRoll()" style="background: #3b82f6; color: #000; border: none; padding: 15px 20px; font-family: 'Share Tech Mono'; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap;">EXECUTE ROLL</button>
-                    <button onclick="executeD100Roll()" style="background: #161922; color: #bcdee7; border: 1px solid #454d5d; padding: 15px 20px; font-family: 'Share Tech Mono'; cursor: pointer; transition: 0.2s; white-space: nowrap;">d100</button>
-                </div>
-            </div>
-
-            <div style="flex: 1;"></div>
-            
+        <div class="log-entry sys-text">
+            > INITIALIZING WEAVE PROTOCOL...<br>
+            > ENCRYPTION HANDSHAKE VERIFIED.<br>
+            > AWAITING CAPTAIN'S LOG INPUT...
         </div>
     </div>
 
@@ -215,47 +192,6 @@
                 outputContainer.scrollTop = outputContainer.scrollHeight;
             }
         }, 500);
-        window.executeActionRoll = async function() {
-            const mod = parseInt(document.getElementById('dice-modifier').value) || 0;
-        
-            // Starforged Rules: 1d6 + Adds vs two independent d10s
-            const actionDie = Math.floor(Math.random() * 6) + 1;
-            const c1 = Math.floor(Math.random() * 10) + 1;
-            const c2 = Math.floor(Math.random() * 10) + 1;
-        
-            let actionScore = actionDie + mod;
-            if (actionScore > 10) actionScore = 10; // Action score cannot exceed 10 naturally
-        
-            let hits = 0;
-            if (actionScore > c1) hits++;
-            if (actionScore > c2) hits++;
-        
-            const isMatch = (c1 === c2);
-        
-            let resultString = "";
-            if (hits === 2) resultString = "STRONG HIT";
-            else if (hits === 1) resultString = "WEAK HIT";
-            else resultString = "MISS";
-        
-            if (isMatch) resultString += " + MATCH!";
-
-            const logMsg = `[ACTION ROLL]\nAction Die: ${actionDie} + ${mod} = ${actionScore}\nChallenge Dice: [${c1}] and [${c2}]\nResult: **${resultString}**`;
-        
-            alert(`Action: ${actionScore}\nChallenge: ${c1} / ${c2}\n\n${resultString}`);
-        
-            if (window.gLink && typeof window.gLink.logServer === 'function') {
-                await window.gLink.logServer(window.charId, logMsg);
-            }
-        };
-
-        window.executeD100Roll = async function() {
-            const roll = Math.floor(Math.random() * 100) + 1;
-            const logMsg = `[PERCENTILE ROLL]\nResult: **${roll}**`;
-            alert(`You rolled: ${roll}`);
-            if (window.gLink && typeof window.gLink.logServer === 'function') {
-                await window.gLink.logServer(window.charId, logMsg);
-            }
-        };
     </script>
 </body>
 </html>
