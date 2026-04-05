@@ -25,12 +25,12 @@
 
         /* THE INFINITE, HIDDEN VIEWPORT */
         #map-viewport { 
-            flex-grow: 1; position: relative; overflow: hidden; /* Hidden again! */
+            flex-grow: 1; position: relative; overflow: hidden; /* Hides the scrollbars */
             background-color: #020204;
             scroll-behavior: smooth; /* Makes programmatic scrolling glide natively */
         }
 
-        /* Lock the internal universe size so it never cramps on a tablet */
+        /* Lock the internal universe size */
         #starscape, #grid-layer, #passages-layer, #map-content, #ruler-layer {
             width: 1800px !important; 
             height: 1400px !important;
@@ -544,22 +544,6 @@
             else { statusMsg.innerText = "ARCHIVE CORRUPTED"; }
         };
 
-        window.panToHex = function(event, gx, gy) {
-            // If the user is trying to edit text or click a wiki link, do not pan the camera
-            if (event && (event.target.isContentEditable || event.target.tagName.toLowerCase() === 'a' || event.target.tagName.toLowerCase() === 'input')) return;
-
-            const targetPixel = getHexPixel(gx, gy);
-            const vWidth = viewport.clientWidth;
-            const vHeight = viewport.clientHeight;
-
-            // Command the hidden viewport to glide to the center of the target hex
-            viewport.scrollTo({
-                left: targetPixel.x - (vWidth / 2),
-                top: targetPixel.y - (vHeight / 2),
-                behavior: 'smooth'
-            });
-        };
-        
         window.highlightMapToken = function(id) {
             const token = document.getElementById(`token-${id}`);
             if (token) { 
@@ -585,6 +569,22 @@
             const card = document.getElementById(`card-${id}`);
             if (card) { card.style.borderColor = ''; card.style.backgroundColor = ''; }
         }
+
+        window.panToHex = function(event, gx, gy) {
+            // If the user is trying to edit text or click a wiki link, do not pan the camera
+            if (event && (event.target.isContentEditable || event.target.tagName.toLowerCase() === 'a' || event.target.tagName.toLowerCase() === 'input')) return;
+
+            const targetPixel = getHexPixel(gx, gy);
+            const vWidth = viewport.clientWidth;
+            const vHeight = viewport.clientHeight;
+
+            // Command the hidden viewport to glide to the center of the target hex
+            viewport.scrollTo({
+                left: targetPixel.x - (vWidth / 2),
+                top: targetPixel.y - (vHeight / 2),
+                behavior: 'smooth'
+            });
+        };
 
         function renderSector() {
             contentLayer.innerHTML = '';
@@ -628,7 +628,7 @@
                     <div class="data-text editable" contenteditable="true" spellcheck="false" onblur="editSectorField('trouble', this.innerText)">${activeSector.trouble}</div>
                 </div>
                 
-                <div id="card-npc" class="data-card" style="border-left-color: #3b82f6; transition: 0.3s;" onmouseenter="highlightMapToken('npc')" onmouseleave="unhighlightMapToken('npc')">
+                <div id="card-npc" class="data-card" style="border-left-color: #3b82f6; transition: 0.3s; cursor: crosshair;" onmouseenter="highlightMapToken('npc')" onmouseleave="unhighlightMapToken('npc')" onclick="panToHex(event, activeSector.connection.x, activeSector.connection.y)">
                     <div class="tag" style="border-color:#3b82f6; color:#3b82f6;">LOCAL CONNECTION</div>
                     <div class="data-text">
                         <b class="editable" contenteditable="true" spellcheck="false" onblur="editSectorField('connection.name', this.innerText)">${activeSector.connection.name}</b> 
@@ -653,7 +653,7 @@
                 }
 
                 html += `
-                    <div id="card-${s.id}" class="data-card" style="transition: 0.3s;" onmouseenter="highlightMapToken(${s.id})" onmouseleave="unhighlightMapToken(${s.id})">
+                    <div id="card-${s.id}" class="data-card" style="transition: 0.3s; cursor: crosshair;" onmouseenter="highlightMapToken(${s.id})" onmouseleave="unhighlightMapToken(${s.id})" onclick="panToHex(event, ${s.x}, ${s.y})">
                         ${titleHtml}
                         <div class="data-text"><b>Loc:</b> ${s.location}</div>
                         ${s.authority !== 'N/A' ? `<div class="data-text"><b>Auth:</b> <span class="editable" contenteditable="true" spellcheck="false" onblur="editSectorField('authority', this.innerText, true, ${idx})">${s.authority}</span></div>` : ''}
@@ -681,121 +681,4 @@
                 else if (s.renderType === 'unknown') { token.classList.add('token-unknown'); token.innerText = '?'; token.style.borderColor = "#fff"; shadowStr = "0 0 10px rgba(255,255,255,0.3)";}
                 else if (s.renderType === 'planet') { token.style.borderColor = "#3b82f6"; shadowStr = "0 0 10px rgba(59,130,246,0.5)"; }
                 else if (s.renderType === 'anomaly') {
-                    if (s.name.includes("Black Hole")) { 
-                        tWidth = 80; tHeight = 80; token.style.borderColor = "#8b5cf6"; token.style.backgroundColor = "#000"; shadowStr = "0 0 40px #8b5cf6"; 
-                    } else if (s.name.includes("White Dwarf")) { 
-                        tWidth = 45; tHeight = 45; token.style.borderColor = "#ffffff"; token.style.backgroundColor = "#e2e8f0"; shadowStr = "0 0 35px #ffffff"; 
-                    } else if (s.name.includes("Star")) { 
-                        tWidth = 120; tHeight = 120; token.style.borderColor = "#fcd34d"; token.style.backgroundColor = "#b45309"; shadowStr = "0 0 60px #fcd34d"; 
-                    } else if (s.name.includes("Pulsar") || s.name.includes("Neutron")) {
-                        tWidth = 40; tHeight = 40; token.style.borderColor = "#38bdf8"; token.style.backgroundColor = "#fff"; shadowStr = "0 0 30px #38bdf8"; 
-                    } else { 
-                        token.style.borderColor = "#a8a29e"; shadowStr = "0 0 10px rgba(168,162,158,0.3)"; 
-                    }
-                }
-
-                token.style.width = tWidth + 'px'; token.style.height = tHeight + 'px';
-                token.style.boxShadow = shadowStr; token.dataset.origShadow = shadowStr; 
-
-                const labelDiv = document.createElement('div');
-                labelDiv.className = 'poi-label'; labelDiv.innerText = s.name;
-                token.appendChild(labelDiv); contentLayer.appendChild(token);
-            });
-
-            infoContainer.innerHTML = html;
-
-            activeSector.passages.forEach(p => {
-                const s1 = activeSector.settlements.find(x => x.id === p[0]);
-                if (!s1) return;
-                const pos1 = getHexPixel(s1.x, s1.y);
-                let pos2 = p[1] === "OFF_MAP" ? { x: pos1.x + (HEX_RADIUS * 6), y: pos1.y - (HEX_RADIUS * 4) } : getHexPixel(activeSector.settlements.find(x => x.id === p[1]).x, activeSector.settlements.find(x => x.id === p[1]).y);
-                
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', pos1.x); line.setAttribute('y1', pos1.y);
-                line.setAttribute('x2', pos2.x); line.setAttribute('y2', pos2.y);
-                line.setAttribute('class', 'passage-line');
-                line.setAttribute('stroke', rColor.pass); 
-                passagesLayer.appendChild(line);
-            });
-
-            if (activeSector.connection && activeSector.connection.isShip) {
-                const npcShip = document.createElement('div');
-                npcShip.id = 'token-npc'; 
-                npcShip.className = 'npc-ship-token';
-                const nPos = getHexPixel(activeSector.connection.x, activeSector.connection.y);
-                npcShip.style.left = nPos.x + 'px'; npcShip.style.top = nPos.y + 'px';
-                
-                npcShip.onmouseenter = () => highlightSidebarCard('npc');
-                npcShip.onmouseleave = () => unhighlightSidebarCard('npc');
-
-                const nLabel = document.createElement('div'); nLabel.className = 'poi-label'; nLabel.innerText = activeSector.connection.name;
-                npcShip.appendChild(nLabel); contentLayer.appendChild(npcShip);
-            }
-
-            shipElement = document.createElement('div');
-            shipElement.id = 'ship-token';
-            const shipPos = getHexPixel(activeSector.ship.x, activeSector.ship.y);
-            shipElement.style.left = shipPos.x + 'px'; shipElement.style.top = shipPos.y + 'px';
-            contentLayer.appendChild(shipElement);
-
-            shipElement.onmousedown = () => { isDragging = true; dragStartX = parseFloat(shipElement.style.left); dragStartY = parseFloat(shipElement.style.top); };
-        }
-
-        viewport.addEventListener('mousemove', (e) => {
-            if (!isDragging || !shipElement) return;
-            const rect = viewport.getBoundingClientRect();
-            
-            // Fix: calculate raw offset considering the scroll position!
-            const rawX = e.clientX - rect.left + viewport.scrollLeft;
-            const rawY = e.clientY - rect.top + viewport.scrollTop;
-
-            shipElement.style.left = rawX + 'px'; shipElement.style.top = rawY + 'px';
-            rulerLine.setAttribute('x1', dragStartX); rulerLine.setAttribute('y1', dragStartY);
-            rulerLine.setAttribute('x2', rawX); rulerLine.setAttribute('y2', rawY);
-            rulerLine.style.display = 'block';
-
-            const midX = (dragStartX + rawX) / 2, midY = (dragStartY + rawY) / 2;
-            rulerText.setAttribute('x', midX); rulerText.setAttribute('y', midY);
-            rulerText.textContent = (Math.hypot(rawX - dragStartX, rawY - dragStartY) / (HEX_RADIUS * Math.sqrt(3))).toFixed(1) + ' Units';
-            rulerText.style.display = 'block';
-            rulerBg.setAttribute('x', midX - 35); rulerBg.setAttribute('y', midY - 10);
-            rulerBg.setAttribute('width', 70); rulerBg.setAttribute('height', 20);
-            rulerBg.style.display = 'block';
-        });
-
-        viewport.addEventListener('mouseup', async (e) => {
-            if (!isDragging || !activeSector) return;
-            isDragging = false;
-            rulerLine.style.display = 'none'; rulerText.style.display = 'none'; rulerBg.style.display = 'none';
-            
-            const rect = viewport.getBoundingClientRect();
-            // Fix: calculate raw offset considering the scroll position!
-            const rawX = e.clientX - rect.left + viewport.scrollLeft;
-            const rawY = e.clientY - rect.top + viewport.scrollTop;
-            
-            let bestDist = Infinity, bestCoord = { x: activeSector.ship.x, y: activeSector.ship.y }, bestPixel = { x: rawX, y: rawY };
-
-            for(let gx=0; gx<=35; gx++) {
-                for(let gy=0; gy<=25; gy++) {
-                    const hPos = getHexPixel(gx, gy);
-                    const dist = Math.hypot(hPos.x - rawX, hPos.y - rawY);
-                    if(dist < bestDist) { bestDist = dist; bestCoord = { x: gx, y: gy }; bestPixel = hPos; }
-                }
-            }
-            activeSector.ship.x = bestCoord.x; activeSector.ship.y = bestCoord.y;
-            shipElement.style.left = bestPixel.x + 'px'; shipElement.style.top = bestPixel.y + 'px';
-            statusMsg.innerText = "UPLINKING...";
-            
-            const archiveName = `[${activeSector.region}] ${activeSector.name}`;
-            await window.gLink.saveSectorServer(window.charId, activeSector.id, archiveName, JSON.stringify(activeSector));
-            
-            statusMsg.innerText = "STANDBY";
-        });
-
-        viewport.addEventListener('mouseleave', () => { 
-            isDragging = false; rulerLine.style.display = 'none'; rulerText.style.display = 'none'; rulerBg.style.display = 'none';
-        });
-
-        initMap();
-    })();
-</script>
+                    if (s.name.includes
