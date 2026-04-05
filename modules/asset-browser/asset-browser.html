@@ -123,6 +123,8 @@
                     
                     // 5. Upload the modified array back to the "assets" column
                     await window.gLink.saveStatServer(window.charId, "assets", JSON.stringify(myAssets));
+                    // 6. Broadcast to the rest of the app that the assets have changed.
+                    window.dispatchEvent(new CustomEvent('assetsChanged'));
                 }
 
                 document.getElementById('status-msg').innerText = "MANIFEST UPDATED";
