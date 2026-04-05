@@ -215,6 +215,9 @@
         let dragStartX = 0;
         let dragStartY = 0;
 
+        // NEW: Controls the suspense interrupt!
+        let isVoidAcknowledged = false; 
+
         // --- SYNTHETIC WEB AUDIO ALARM ENGINE ---
         let audioCtx = null;
         let alarmInterval = null;
@@ -228,28 +231,28 @@
             if (!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
             if (audioCtx.state === 'suspended') { audioCtx.resume(); }
 
-            let isHigh = true;
             if (alarmInterval) clearInterval(alarmInterval);
 
-            // Creates a classic two-tone Sci-Fi Klaxon!
+            // The Terrifying 440Hz Sawtooth Pulse
             alarmInterval = setInterval(() => {
                 const osc = audioCtx.createOscillator();
                 const gainNode = audioCtx.createGain();
                 
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(isHigh ? 600 : 450, audioCtx.currentTime);
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(440, audioCtx.currentTime); // Pure 440Hz
                 
-                gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime); 
-                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.4);
+                // Audio Envelope: Sharp attack, hold, quick release (creates a harsh "BZZZT")
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.1, audioCtx.currentTime + 0.05); 
+                gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime + 0.35);
+                gainNode.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.4); 
                 
                 osc.connect(gainNode);
                 gainNode.connect(audioCtx.destination);
                 
-                osc.start();
+                osc.start(audioCtx.currentTime);
                 osc.stop(audioCtx.currentTime + 0.4);
-                
-                isHigh = !isHigh;
-            }, 500);
+            }, 600); // Triggers every 0.6 seconds
         }
 
         window.dismissVoidWarning = function() {
@@ -258,6 +261,9 @@
                 clearInterval(alarmInterval);
                 alarmInterval = null;
             }
+            // Acknowledge the warning and FINALLY draw the map!
+            isVoidAcknowledged = true;
+            renderSector(); 
         };
 
         const REGION_RULES = {
@@ -631,6 +637,8 @@
 
             sector.ship = { x: 5, y: 5 }; 
             
+            // RESET SUSPENSE FLAG BEFORE RENDERING
+            isVoidAcknowledged = false;
             activeSector = sector;
             renderSector(); 
             
@@ -641,11 +649,6 @@
             await refreshArchiveList();
             archiveSelect.value = sector.id; 
             statusMsg.innerText = "STANDBY";
-
-            // TRIGGER VOID ALERT POPUP
-            if (activeSector.region === 'VOID') {
-                triggerVoidWarning();
-            }
         };
 
         window.loadArchivedSector = async function() {
@@ -654,13 +657,11 @@
             statusMsg.innerText = "DOWNLOADING...";
             const data = await window.gLink.loadSectorServer(window.charId, id);
             if (data) { 
+                // RESET SUSPENSE FLAG BEFORE RENDERING
+                isVoidAcknowledged = false;
                 activeSector = data; 
                 renderSector(); 
                 statusMsg.innerText = "STANDBY"; 
-                // TRIGGER VOID ALERT IF LOADING A DEAD ZONE
-                if (activeSector.region === 'VOID') {
-                    triggerVoidWarning();
-                }
             } 
             else { statusMsg.innerText = "ARCHIVE CORRUPTED"; }
         };
@@ -704,22 +705,34 @@
         };
 
         function renderSector() {
-            contentLayer.innerHTML = '';
-            passagesLayer.innerHTML = '';
-            infoContainer.innerHTML = '';
-
             if (!activeSector) return;
             const regKey = activeSector.region.toLowerCase();
             const rColor = REGION_COLORS[regKey] || REGION_COLORS['terminus'];
-
-            scope.style.setProperty('--theme-color', rColor.hex);
-            scope.style.setProperty('--theme-bg', rColor.grid.replace('0.08', '0.1'));
 
             if (regKey === 'void') {
                 scope.classList.add('void-alert');
             } else {
                 scope.classList.remove('void-alert');
             }
+
+            // --- 1. THE SUSPENSE INTERRUPT ---
+            // If we are in the Void but haven't clicked "Acknowledge" yet, stop drawing the map!
+            if (regKey === 'void' && !isVoidAcknowledged) {
+                contentLayer.innerHTML = '';
+                passagesLayer.innerHTML = '';
+                document.getElementById('starscape').innerHTML = '';
+                document.getElementById('grid-layer').innerHTML = '';
+                
+                // Show a scary offline message in the sidebar
+                infoContainer.innerHTML = '<div style="color:#ef4444; text-align:center; margin-top:40px; font-family:\'Share Tech Mono\'; letter-spacing:3px; animation: blink 1s infinite;">SYSTEM LOCKDOWN</div>';
+                
+                triggerVoidWarning(); 
+                return; // HALT EXECUTION: DO NOT DRAW THE MAP
+            }
+
+            // --- 2. NORMAL RENDERING (Happens only after Acknowledge) ---
+            scope.style.setProperty('--theme-color', rColor.hex);
+            scope.style.setProperty('--theme-bg', rColor.grid.replace('0.08', '0.1'));
 
             drawGrid(regKey);
             const bg = document.getElementById('starscape');
