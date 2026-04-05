@@ -132,10 +132,32 @@
         const secPrefix = ["Aegis", "Vanguard", "Helios", "Erebus", "Corsair", "Nova", "Obsidian", "Cygnus", "Talos", "Onyx"];
         const secSuffix = ["Reach", "Expanse", "Drift", "Cluster", "Sector", "Nebula", "Void", "Abyss", "Veil"];
 
-        // Expanded Fallback Arrays for Diverse Generation
         const locRolls = ["Deep Space Station", "Orbital Habitat", "Asteroid Base", "Planetary Settlement", "Gas Giant Refinery"];
         const planetRolls = ["Desert World", "Ice World", "Furnace World", "Jungle World", "Ocean World", "Rocky World", "Toxic World", "Shattered World"];
         const anomalyRolls = ["Black Hole", "Neutron Star", "Asteroid Belt", "Ion Storm", "Stellar Nebula", "Red Dwarf Star", "Pulsar"];
+
+        // Real-world astrophysics database for Anomalies
+        const WIKI_LINKS = {
+            "Black Hole": "https://en.wikipedia.org/wiki/Black_hole",
+            "Neutron Star": "https://en.wikipedia.org/wiki/Neutron_star",
+            "Asteroid Belt": "https://en.wikipedia.org/wiki/Asteroid_belt",
+            "Ion Storm": "https://en.wikipedia.org/wiki/Geomagnetic_storm", 
+            "Stellar Nebula": "https://en.wikipedia.org/wiki/Nebula",
+            "Red Dwarf Star": "https://en.wikipedia.org/wiki/Red_dwarf",
+            "Pulsar": "https://en.wikipedia.org/wiki/Pulsar"
+        };
+
+        // NEW: Real-world/Theoretical Exoplanet database for Planets
+        const PLANET_LINKS = {
+            "Desert World": "https://en.wikipedia.org/wiki/Desert_planet",
+            "Ice World": "https://en.wikipedia.org/wiki/Ice_planet",
+            "Furnace World": "https://en.wikipedia.org/wiki/Lava_planet",
+            "Jungle World": "https://en.wikipedia.org/wiki/Superhabitable_planet",
+            "Ocean World": "https://en.wikipedia.org/wiki/Ocean_planet",
+            "Rocky World": "https://en.wikipedia.org/wiki/Terrestrial_planet",
+            "Toxic World": "https://en.wikipedia.org/wiki/Carbon_planet",
+            "Shattered World": "https://en.wikipedia.org/wiki/Disrupted_planet"
+        };
 
         window.initMap = async function() {
             try {
@@ -233,8 +255,6 @@
             await window.gLink.saveSectorServer(window.charId, activeSector.id, activeSector.name, JSON.stringify(activeSector));
             statusMsg.innerText = "STANDBY";
             refreshArchiveList(); 
-            
-            // This line fixes your sync issue! It redraws the visual map using the updated data.
             renderSector(); 
         };
 
@@ -271,7 +291,6 @@
                     attempts++;
                 } while (!valid && attempts < 100);
 
-                // Add variety! 25% Anomaly, 25% Uncharted Planet, 50% Settlement
                 let poiCategory = Math.random();
                 let loc, name, planetType, auth, proj, pop;
 
@@ -394,13 +413,43 @@
             `;
 
             activeSector.settlements.forEach((s, idx) => {
+                
+                let titleHtml = "";
+                let wikiUrl = null;
+
+                if (s.location === "Stellar Anomaly") {
+                    for (let key in WIKI_LINKS) {
+                        if (s.name.includes(key)) {
+                            wikiUrl = WIKI_LINKS[key];
+                            break;
+                        }
+                    }
+                }
+
+                if (wikiUrl) {
+                    titleHtml = `<div class="data-title"><a href="${wikiUrl}" target="_blank" style="color: #8b5cf6; text-decoration: none; border-bottom: 1px dashed #8b5cf6;" title="Read about ${s.name} on Wikipedia">${s.name} ↗</a></div>`;
+                } else {
+                    titleHtml = `<div class="data-title editable" contenteditable="true" spellcheck="false" onblur="editSectorField('name', this.innerText, true, ${idx})">${s.name}</div>`;
+                }
+
+                // NEW: Planet Link Generation
+                let planetHtml = '';
+                if (s.planet !== 'N/A') {
+                    let pUrl = PLANET_LINKS[s.planet];
+                    if (pUrl) {
+                        planetHtml = `<div class="data-text" style="color:#fbbf24;"><b>Planet:</b> <a href="${pUrl}" target="_blank" style="color:#fbbf24; text-decoration: none; border-bottom: 1px dashed #fbbf24;" title="Read about ${s.planet}s on Wikipedia">${s.planet} ↗</a></div>`;
+                    } else {
+                        planetHtml = `<div class="data-text" style="color:#fbbf24;"><b>Planet:</b> ${s.planet}</div>`;
+                    }
+                }
+
                 html += `
                     <div class="data-card">
-                        <div class="data-title editable" contenteditable="true" spellcheck="false" onblur="editSectorField('name', this.innerText, true, ${idx})">${s.name}</div>
+                        ${titleHtml}
                         <div class="data-text"><b>Loc:</b> ${s.location}</div>
                         ${s.authority !== 'N/A' ? `<div class="data-text"><b>Auth:</b> <span class="editable" contenteditable="true" spellcheck="false" onblur="editSectorField('authority', this.innerText, true, ${idx})">${s.authority}</span></div>` : ''}
                         ${s.projects !== 'N/A' ? `<div class="data-text"><b>Proj:</b> <span class="editable" contenteditable="true" spellcheck="false" onblur="editSectorField('projects', this.innerText, true, ${idx})">${s.projects}</span></div>` : ''}
-                        ${s.planet !== 'N/A' ? `<div class="data-text" style="color:#fbbf24;"><b>Planet:</b> ${s.planet}</div>` : ''}
+                        ${planetHtml}
                     </div>
                 `;
 
@@ -411,16 +460,15 @@
                 token.style.top = pos.y + 'px';
                 token.innerHTML = `<div class="poi-label">${s.name}</div>`;
                 
-                // Color Code based on the POI type
                 let ringColor = "#00ff9d"; 
                 let bgColor = "#000";
                 let shadow = "0 0 10px rgba(0,255,153,0.3)";
 
                 if (s.location === "Uncharted Planet") {
-                    ringColor = "#3b82f6"; // Blueish
+                    ringColor = "#3b82f6";
                     shadow = "0 0 10px rgba(59,130,246,0.3)";
                 } else if (s.planet !== 'N/A' && s.location !== "Uncharted Planet") {
-                    ringColor = "#fbbf24"; // Gold for planetary settlements
+                    ringColor = "#fbbf24";
                     shadow = "0 0 10px rgba(251,191,36,0.3)";
                 } else if (s.location === "Stellar Anomaly") {
                     if (s.name.includes("Black Hole")) {
@@ -428,7 +476,7 @@
                     } else if (s.name.includes("Star") || s.name.includes("Pulsar")) {
                         ringColor = "#fcd34d"; bgColor = "#b45309"; shadow = "0 0 20px #fcd34d";
                     } else {
-                        ringColor = "#a8a29e"; // Grey for Asteroids/Nebulas
+                        ringColor = "#a8a29e";
                         shadow = "0 0 10px rgba(168,162,158,0.3)";
                     }
                 }
