@@ -1,131 +1,197 @@
-<div id="journal-scope">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Captain's Log - Terminal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
-        #journal-scope { background: #0b0d12; color: #bcdee7; padding: 20px; font-family: 'Exo 2'; display: flex; flex-direction: column; height: 100%; }
-        #journal-scope .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.7rem; letter-spacing: 1px; }
-        #journal-scope #sync-indicator { width: 8px; height: 8px; border-radius: 50%; background: #444; display: inline-block; margin-right: 5px; }
-        #journal-scope #sync-indicator.online { background: #00ff9d; box-shadow: 0 0 8px #00ff9d; }
-        #journal-scope textarea { 
-            width: 100%; height: 200px; background: #161922; color: #00ff9d; border: 1px solid #454d5d; 
-            padding: 15px; font-family: 'Share Tech Mono'; font-size: 1rem; outline: none; resize: none; border-radius: 4px;
+        :root {
+            --term-green: #00ff9d;
+            --term-dim: #00ff9d88;
+            --term-bg: #020204;
+            --term-red: #ff0055;
         }
-        #journal-scope .history-feed { margin-top: 20px; border-top: 1px solid #1a1c23; padding-top: 15px; overflow-y: auto; max-height: 200px; }
-        #journal-scope .history-item { background: rgba(255,255,255,0.03); padding: 10px; border-radius: 4px; border-left: 2px solid #454d5d; font-size: 0.8rem; margin-bottom: 8px; }
-        #journal-scope .btn { border: none; padding: 12px; font-weight: bold; cursor: pointer; text-transform: uppercase; font-family: 'Exo 2'; }
-        #journal-scope .save-btn { background: #00ff9d; color: #000; }
-        #journal-scope .draft-btn { background: #1a1c23; color: #454d5d; border: 1px solid #454d5d; }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background-color: var(--term-bg);
+            color: var(--term-green);
+            font-family: 'Share Tech Mono', monospace;
+            overflow: hidden;
+            display: flex; flex-direction: column;
+        }
+
+        /* --- CRT SCANLINE EFFECT --- */
+        body::after {
+            content: " "; display: block; position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+            background-size: 100% 4px;
+            z-index: 100; pointer-events: none;
+        }
+
+        /* --- TERMINAL HEADER --- */
+        #terminal-header {
+            background: rgba(11, 13, 18, 0.95); border-bottom: 2px solid var(--term-green);
+            padding: 10px 20px; font-size: 0.9rem; letter-spacing: 2px;
+            display: flex; justify-content: space-between; align-items: center;
+            z-index: 10;
+        }
+        .header-status { color: var(--term-dim); font-size: 0.7rem; animation: blink 2s infinite; }
+
+        /* --- TERMINAL OUTPUT (THE SCROLLING TEXT) --- */
+        #terminal-output {
+            flex-grow: 1; padding: 20px; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 15px;
+            scroll-behavior: smooth;
+        }
+        
+        /* Custom Sci-Fi Scrollbars */
+        #terminal-output::-webkit-scrollbar { width: 8px; }
+        #terminal-output::-webkit-scrollbar-track { background: #0b0d12; border-left: 1px solid #1a1c23; }
+        #terminal-output::-webkit-scrollbar-thumb { background: var(--term-dim); border-radius: 2px; }
+
+        /* Log Entry Styling */
+        .log-entry { line-height: 1.5; font-size: 0.95rem; text-shadow: 0 0 5px rgba(0,255,153,0.3); }
+        .log-meta { color: #aab; font-size: 0.8rem; display: block; margin-bottom: 2px;}
+        .log-id { color: #3b82f6; font-size: 0.75rem; }
+        .log-text { color: var(--term-green); margin-left: 15px; border-left: 2px solid var(--term-dim); padding-left: 10px; }
+        .sys-text { color: var(--term-red); text-shadow: 0 0 5px rgba(255,0,85,0.3); }
+
+        /* --- TERMINAL INPUT ROW --- */
+        #terminal-input-row {
+            display: flex; align-items: center;
+            padding: 15px 20px; background: rgba(11, 13, 18, 0.95);
+            border-top: 1px solid #1a1c23; z-index: 10;
+        }
+        #prompt { color: var(--term-green); margin-right: 10px; font-weight: bold; }
+        #log-input {
+            flex-grow: 1; background: transparent; border: none; outline: none;
+            color: #fff; font-family: 'Share Tech Mono', monospace; font-size: 1rem;
+            text-shadow: 0 0 5px rgba(255,255,255,0.3);
+        }
+
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
     </style>
+</head>
+<body>
 
-    <div class="header">
-        <div><span id="sync-indicator"></span> ACTIVE BUFFER</div>
-        <div id="journal-status">READY...</div>
+    <div id="terminal-header">
+        <span>VANGUARD SECURE SHELL v2.4</span>
+        <span class="header-status">UPLINK: ACTIVE</span>
     </div>
 
-    <textarea id="journal-input" placeholder="START TRANSMISSION..."></textarea>
-
-    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 10px; margin-top: 15px;">
-        <button class="btn draft-btn" onclick="saveJournalDraft()">Cache Draft</button>
-        <button class="btn save-btn" onclick="commitJournalToArchive()">Commit to Archive</button>
+    <div id="terminal-output">
+        <div class="log-entry sys-text">
+            > INITIALIZING COMM-LINK...<br>
+            > ENCRYPTION PROTOCOLS VERIFIED.<br>
+            > AWAITING CAPTAIN'S LOG INPUT...
+        </div>
     </div>
 
-    <div class="header" style="margin-top:20px;"><span>RECENT UPLINKS</span></div>
-    <div id="history-feed" class="history-feed"></div>
-</div>
+    <div id="terminal-input-row">
+        <span id="prompt">SNEAKY_PIE@TERM:~$</span>
+        <input type="text" id="log-input" placeholder="Type transmission here... (Press ENTER to send)" autocomplete="off" autofocus>
+    </div>
 
-<script>
-    // Store local history to render
-    let localHistory = [];
+    <script>
+        // Set up your character variables (You likely pull these from window.charId normally)
+        const charName = "Sneaky Pie";
+        const charID = "SNEAKY PIE";
+        const maxLines = 50; // How many messages to keep on screen before deleting old ones
 
-    (async function initJournal() {
-        const status = document.getElementById('journal-status');
-        const textarea = document.getElementById('journal-input');
-        
-        try {
-            if (window.dataswornReady) await window.dataswornReady;
-            
-            // Connect using the new gLink bridge
-            const stats = await window.gLink.loadStatsServer(window.charId);
-            
-            if (stats) {
-                document.getElementById('sync-indicator').classList.add('online');
-                textarea.value = stats.journal_draft || "";
-                
-                // Assuming history comes as an array, otherwise we init empty
-                localHistory = stats.history ? (Array.isArray(stats.history) ? stats.history : JSON.parse(stats.history)) : [];
-                renderJournalHistory(localHistory);
+        const outputContainer = document.getElementById('terminal-output');
+        const inputField = document.getElementById('log-input');
+
+        // Listen for the Enter key
+        inputField.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitLog();
             }
+        });
 
-            // Set auto-save every 5 minutes (300,000 milliseconds)
-            setInterval(() => {
-                if (textarea.value.trim().length > 0) {
-                    saveJournalDraft(true);
-                }
-            }, 300000);
+        function submitLog() {
+            const text = inputField.value.trim();
+            if (text === "") return; // Don't send empty blanks
 
-        } catch (err) {
-            status.innerText = "LINK SEVERED";
-            console.error("Journal Error:", err);
+            // 1. Generate Timestamps
+            const now = new Date();
+            const dateStr = now.toLocaleDateString(); // e.g., 4/4/2026
+            const timeStr = now.toLocaleTimeString(); // e.g., 12:51:09 AM
+            
+            // Format for the [ID: SNEAKY PIE | 2026-04-04 00:51:08]
+            const isoDate = now.toISOString().split('T')[0];
+            const isoTime = now.toTimeString().split(' ')[0];
+
+            // 2. Build the exact string format you requested for Google Docs
+            const rawDocString = `[${dateStr}, ${timeStr}] ${charName}: [ID: ${charID} | ${isoDate} ${isoTime}]\n${text}`;
+
+            // 3. Print it locally to the terminal immediately
+            appendTerminalEntry(dateStr, timeStr, isoDate, isoTime, text);
+
+            // 4. Push to Google Docs (This is where your existing gLink code goes!)
+            pushToGoogleDocs(rawDocString);
+
+            // 5. Clear the input and refocus
+            inputField.value = '';
+            inputField.focus();
         }
-    })();
 
-    function renderJournalHistory(historyArray) {
-        if (!Array.isArray(historyArray)) return;
-        const feed = document.getElementById('history-feed');
-        feed.innerHTML = historyArray.slice(-5).reverse().map(entry => `
-            <div class="history-item">
-                <div style="font-size:0.6rem; color:#ff0055;">ARCHIVED ENTRY</div>
-                <div style="white-space: pre-wrap;">${entry}</div>
-            </div>
-        `).join('');
-    }
+        function appendTerminalEntry(dateStr, timeStr, isoDate, isoTime, text) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            
+            // Format it to look like a clean sci-fi log block
+            entry.innerHTML = `
+                <span class="log-meta">[${dateStr}, ${timeStr}] ${charName}: <span class="log-id">[ID: ${charID} | ${isoDate} ${isoTime}]</span></span>
+                <div class="log-text">${text}</div>
+            `;
+            
+            outputContainer.appendChild(entry);
 
-    // Pass isAuto=true to avoid changing the UI status to distracting text
-    async function saveJournalDraft(isAuto = false) {
-        const content = document.getElementById('journal-input').value;
-        const statusEl = document.getElementById('journal-status');
-        
-        if (!isAuto) statusEl.innerText = "CACHING...";
-        
-        await window.gLink.saveStatServer(window.charId, "journal_draft", content);
-        
-        if (!isAuto) {
-            statusEl.innerText = "CACHED: " + new Date().toLocaleTimeString();
-        } else {
-            console.log("Journal auto-saved at " + new Date().toLocaleTimeString());
+            // Scroll to the absolute bottom so the new message is always visible
+            outputContainer.scrollTop = outputContainer.scrollHeight;
+
+            // Remove the oldest messages if we exceed maxLines (prevents lag over a long session)
+            if (outputContainer.children.length > maxLines) {
+                outputContainer.removeChild(outputContainer.children[1]); // Keep the boot sequence at index 0, remove index 1
+            }
         }
-    }
 
-    function getFormattedTimestamp() {
-        const d = new Date();
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const time = d.toTimeString().split(' ')[0];
-        return `${year}-${month}-${day} ${time}`;
-    }
+        // Mock function representing your Google Link connection
+        async function pushToGoogleDocs(formattedString) {
+            try {
+                // In your actual code, this will look something like:
+                // await window.gLink.appendToJournal(window.charId, formattedString);
+                
+                console.log("Pushed to Docs:", formattedString);
+                
+                // Optional: You could append a subtle system message confirming the save
+                // appendSystemMessage("Transmission logged to secure archive.");
+            } catch (error) {
+                appendSystemMessage("ERROR: Uplink failed. Transmission not saved.");
+            }
+        }
 
-    async function commitJournalToArchive() {
-        const textarea = document.getElementById('journal-input');
-        const content = textarea.value.trim();
-        if (!content || !confirm("Archive this entry?")) return;
+        function appendSystemMessage(msg) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry sys-text';
+            entry.innerText = `> ${msg}`;
+            outputContainer.appendChild(entry);
+            outputContainer.scrollTop = outputContainer.scrollHeight;
+        }
 
-        document.getElementById('journal-status').innerText = "TRANSMITTING...";
-        
-        // Construct the log payload with ID and Timestamp
-        const timestamp = getFormattedTimestamp();
-        const logEntry = `[ID: ${window.charId.toUpperCase()} | ${timestamp}]\n${content}\n`;
-
-        // 1. Submit to Google Docs Log
-        await window.gLink.logServer(window.charId, logEntry);
-        
-        // 2. Clear the temporary holding cell on Google Sheets
-        await window.gLink.saveStatServer(window.charId, "journal_draft", "");
-        
-        // 3. Clear the UI
-        textarea.value = "";
-        document.getElementById('journal-status').innerText = "ARCHIVE SECURED";
-        
-        // Push locally to avoid needing to immediately reload everything
-        localHistory.push(logEntry);
-        renderJournalHistory(localHistory);
-    }
-</script>
+        // --- OPTIONAL MULTIPLAYER POLLING LOGIC ---
+        // If you want player 2's messages to pop up on Player 1's screen automatically:
+        /*
+        setInterval(async () => {
+            // Fetch the last 10 lines from Google Docs
+            const recentLogs = await window.gLink.getRecentJournalEntries();
+            // Compare them to what is currently on screen, and append any new ones!
+        }, 5000); // Check every 5 seconds
+        */
+    </script>
+</body>
+</html>
