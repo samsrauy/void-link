@@ -1,3 +1,128 @@
+<div id="map-scope">
+    <style>
+        #map-scope { width: 100%; height: 100%; background: #050508; color: #00ff9d; font-family: 'Exo 2', sans-serif; display: flex; position: relative; overflow: hidden; }
+
+        #map-scope #tactical-sidebar {
+            width: 380px; background: rgba(11, 13, 18, 0.95); border-right: 1px solid #1a1c23;
+            display: flex; flex-direction: column; z-index: 20; padding: 20px; box-sizing: border-box;
+            overflow-y: auto; font-size: 0.85rem;
+        }
+        #map-scope .sidebar-header { font-size: 0.7rem; letter-spacing: 3px; color: #454d5d; border-bottom: 1px solid #1a1c23; padding-bottom: 5px; margin-bottom: 15px; text-transform: uppercase; display: flex; justify-content: space-between; }
+
+        #map-scope select, #map-scope button {
+            width: 100%; padding: 10px; background: #161922; color: #00ff9d; border: 1px solid #454d5d;
+            margin-bottom: 10px; font-family: 'Share Tech Mono', monospace; cursor: pointer; text-transform: uppercase;
+        }
+        #map-scope button:hover { background: #00ff9d; color: #000; }
+
+        #map-scope .data-card { background: #1a1c23; border: 1px solid #454d5d; padding: 10px; margin-bottom: 10px; border-left: 3px solid #00ff9d; }
+        #map-scope .data-title { font-weight: bold; color: #bcdee7; font-family: 'Share Tech Mono'; margin-bottom: 5px; font-size: 1rem; }
+        #map-scope .data-text { color: #aab; line-height: 1.4; font-size: 0.8rem; margin-bottom: 4px; }
+        #map-scope .tag { font-size: 0.6rem; background: #161922; padding: 2px 6px; border-radius: 4px; border: 1px solid #454d5d; display: inline-block; margin-right: 4px; color: #ff0055;}
+
+        #map-scope .editable { border-bottom: 1px dashed #454d5d; cursor: text; outline: none; transition: 0.2s; display: inline-block; min-width: 20px; }
+        #map-scope .editable:focus { border-bottom-color: #00ff9d; background: rgba(0,255,153,0.1); }
+
+        #map-viewport {
+            flex-grow: 1; position: relative; overflow: hidden;
+            background-color: #020204;
+        }
+
+        #starscape { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+        #map-content { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+
+        #grid-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2;
+            -webkit-mask-image: linear-gradient(to right, black 65%, transparent 100%);
+            mask-image: linear-gradient(to right, black 65%, transparent 100%);
+        }
+
+        .poi-token {
+            position: absolute; border-radius: 50%;
+            background: #000; border: 2px solid #00ff9d; transform: translate(-50%, -50%);
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: 0.2s; box-shadow: 0 0 10px rgba(0,255,153,0.3);
+            pointer-events: auto; z-index: 15;
+        }
+        .poi-token:hover { transform: translate(-50%, -50%) scale(1.3); z-index: 30 !important; }
+
+        .token-derelict { border-radius: 2px; border-color: #10b981; background: #064e3b; box-shadow: 0 0 10px rgba(16,185,129,0.3); }
+        .token-precursor { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); border-radius: 0; background: #3b0764; box-shadow: none; border: none; }
+        .token-asteroid { background: transparent; border: none; color: #9ca3af; font-size: 20px; box-shadow: none; }
+        .token-unknown { background: transparent; border: 1px dashed #fff; color: #fff; font-size: 12px; font-weight: bold; font-family: 'Share Tech Mono'; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+
+        .poi-label {
+            position: absolute; top: calc(100% + 5px); left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.9); padding: 3px 6px; font-size: 10px;
+            font-family: 'Share Tech Mono'; color: #fff; border: 1px solid #454d5d; pointer-events: none;
+            white-space: nowrap; border-radius: 2px; z-index: 20;
+        }
+
+        #ship-token {
+            position: absolute; width: 20px; height: 20px;
+            background: rgba(0, 255, 153, 0.2); border: 2px solid #fff;
+            transform: translate(-50%, -50%); cursor: grab;
+            display: flex; align-items: center; justify-content: center;
+            clip-path: polygon(50% 0%, 100% 100%, 50% 80%, 0% 100%);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            pointer-events: auto; transition: transform 0.1s; z-index: 40;
+        }
+        #ship-token:active { cursor: grabbing; border-color: #ff0055; background: rgba(255,0,85,0.3); transform: translate(-50%, -50%) scale(1.2); }
+
+        .npc-ship-token {
+            position: absolute; width: 16px; height: 16px;
+            background: rgba(251, 191, 36, 0.2); border: 2px solid #f59e0b;
+            transform: translate(-50%, -50%);
+            display: flex; align-items: center; justify-content: center;
+            clip-path: polygon(50% 0%, 100% 100%, 50% 80%, 0% 100%);
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.3); pointer-events: auto; z-index: 14;
+        }
+        .npc-ship-token:hover { transform: translate(-50%, -50%) scale(1.5); box-shadow: 0 0 15px #f59e0b; z-index: 20; }
+
+        #passages-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
+        .passage-line { stroke: rgba(0, 255, 153, 0.3); stroke-width: 2; stroke-dasharray: 4; fill: none; }
+    </style>
+
+    <div id="tactical-sidebar">
+        <div class="sidebar-header">
+            <span>NAV-COMPUTER SETUP</span>
+            <span id="map-status" style="color: #00ff9d; opacity: 0.7;">STANDBY</span>
+        </div>
+        <select id="region-select">
+            <option value="terminus">REGION: TERMINUS</option>
+            <option value="outlands" selected>REGION: OUTLANDS</option>
+            <option value="expanse">REGION: EXPANSE</option>
+            <option value="void">REGION: THE VOID</option>
+        </select>
+        <button id="btn-generate" onclick="generateSector()">GENERATE NEW SECTOR</button>
+
+        <div class="sidebar-header" style="margin-top:20px;">NAV ARCHIVES</div>
+        <select id="archive-select">
+            <option value="">-- NO ARCHIVES FOUND --</option>
+        </select>
+        <button id="btn-load" onclick="loadArchivedSector()">LOAD SELECTED</button>
+
+        <div class="sidebar-header" style="margin-top:20px;">LOCAL SENSORS</div>
+        <div id="sector-info-container">
+            <div style="opacity: 0.5; text-align: center; margin-top: 20px;">STANDBY</div>
+        </div>
+    </div>
+
+    <div id="map-viewport">
+        <div id="starscape"></div>
+        <svg id="grid-layer"></svg>
+        <svg id="passages-layer"></svg>
+        <div id="map-content"></div>
+
+        <svg id="ruler-layer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100;">
+            <line id="ruler-line" x1="0" y1="0" x2="0" y2="0" stroke="#ff0055" stroke-width="2" stroke-dasharray="5,5" display="none" />
+            <rect id="ruler-bg" fill="#1a1c23" stroke="#454d5d" stroke-width="1" rx="4" display="none" />
+            <text id="ruler-text" fill="#ff0055" font-family="'Share Tech Mono', monospace" font-size="12" font-weight="bold" text-anchor="middle" dominant-baseline="middle" display="none"></text>
+        </svg>
+    </div>
+</div>
+
+
 <script>
     (function() {
         const scope = document.getElementById('map-scope');
@@ -27,7 +152,7 @@
             'void':     { settlements: 2, passages: 1, bhChance: 1.00 }
         };
 
-        // Danger-coded color palette!
+        // NEW: Danger-coded color palette!
         const REGION_COLORS = {
             'terminus': { hex: '#00ff9d', grid: 'rgba(0, 255, 153, 0.08)', pass: 'rgba(0, 255, 153, 0.3)' },  // Green
             'outlands': { hex: '#facc15', grid: 'rgba(250, 204, 21, 0.08)', pass: 'rgba(250, 204, 21, 0.3)' }, // Yellow
