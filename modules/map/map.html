@@ -26,7 +26,6 @@
         #map-viewport { 
             flex-grow: 1; position: relative; overflow: hidden;
             background-color: #020204;
-            /* Background image removed to prevent ghost-grid snapping bugs */
         }
 
         #starscape { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
@@ -37,9 +36,16 @@
             background: #000; border: 2px solid #00ff9d; transform: translate(-50%, -50%);
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; transition: 0.2s; box-shadow: 0 0 10px rgba(0,255,153,0.3);
-            pointer-events: auto;
+            pointer-events: auto; z-index: 15;
         }
-        .poi-token:hover { transform: translate(-50%, -50%) scale(1.5); box-shadow: 0 0 15px #00ff9d; }
+        .poi-token:hover { transform: translate(-50%, -50%) scale(1.5); box-shadow: 0 0 15px #00ff9d; z-index: 20; }
+        
+        /* New Space Clutter Tokens */
+        .token-derelict { border-radius: 2px; border-color: #10b981; background: #064e3b; box-shadow: 0 0 10px rgba(16,185,129,0.3); }
+        .token-precursor { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); border-radius: 0; background: #3b0764; box-shadow: none; border: none; }
+        .token-asteroid { background: transparent; border: none; color: #9ca3af; font-size: 20px; box-shadow: none; }
+        .token-unknown { background: transparent; border: 1px dashed #fff; color: #fff; font-size: 12px; font-weight: bold; font-family: 'Share Tech Mono'; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+
         .poi-label {
             position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.8); padding: 2px 5px; font-size: 10px;
@@ -54,9 +60,20 @@
             display: flex; align-items: center; justify-content: center;
             clip-path: polygon(50% 0%, 100% 100%, 50% 80%, 0% 100%);
             box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
-            pointer-events: auto; transition: transform 0.1s;
+            pointer-events: auto; transition: transform 0.1s; z-index: 25;
         }
         #ship-token:active { cursor: grabbing; border-color: #ff0055; background: rgba(255,0,85,0.3); transform: translate(-50%, -50%) scale(1.2); }
+
+        /* NPC Ship Token */
+        .npc-ship-token {
+            position: absolute; width: 16px; height: 16px; 
+            background: rgba(251, 191, 36, 0.2); border: 2px solid #f59e0b; 
+            transform: translate(-50%, -50%); 
+            display: flex; align-items: center; justify-content: center;
+            clip-path: polygon(50% 0%, 100% 100%, 50% 80%, 0% 100%);
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.3); pointer-events: auto; z-index: 14;
+        }
+        .npc-ship-token:hover { transform: translate(-50%, -50%) scale(1.5); box-shadow: 0 0 15px #f59e0b; z-index: 20; }
 
         #passages-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5; pointer-events: none; }
         .passage-line { stroke: rgba(0, 255, 153, 0.3); stroke-width: 2; stroke-dasharray: 4; fill: none; }
@@ -136,7 +153,6 @@
         const planetRolls = ["Desert World", "Ice World", "Furnace World", "Jungle World", "Ocean World", "Rocky World", "Toxic World", "Shattered World"];
         const anomalyRolls = ["Black Hole", "Neutron Star", "Asteroid Belt", "Ion Storm", "Stellar Nebula", "Red Dwarf Star", "Pulsar"];
 
-        // Real-world astrophysics database for Anomalies
         const WIKI_LINKS = {
             "Black Hole": "https://en.wikipedia.org/wiki/Black_hole",
             "Neutron Star": "https://en.wikipedia.org/wiki/Neutron_star",
@@ -147,7 +163,6 @@
             "Pulsar": "https://en.wikipedia.org/wiki/Pulsar"
         };
 
-        // NEW: Real-world/Theoretical Exoplanet database for Planets
         const PLANET_LINKS = {
             "Desert World": "https://en.wikipedia.org/wiki/Desert_planet",
             "Ice World": "https://en.wikipedia.org/wiki/Ice_planet",
@@ -279,7 +294,8 @@
                 ship: { x: 0, y: 0 }
             };
 
-            for (let i = 0; i < rules.settlements; i++) {
+            // Guarantee a minimum amount of space clutter by running an extra +1 loop
+            for (let i = 0; i < rules.settlements + 1; i++) {
                 let x, y, valid; let attempts = 0;
                 do {
                     valid = true;
@@ -292,18 +308,29 @@
                 } while (!valid && attempts < 100);
 
                 let poiCategory = Math.random();
-                let loc, name, planetType, auth, proj, pop;
+                let loc, name, planetType, auth, proj, pop, renderType;
 
-                if (poiCategory < 0.25) { 
+                if (poiCategory < 0.10) { 
+                    loc = "Derelict Spacecraft"; name = rollOracle("derelict_name", "Unknown Ghost Ship");
+                    planetType = "N/A"; auth = "N/A"; proj = "N/A"; pop = "None"; renderType = "derelict";
+                } else if (poiCategory < 0.15) { 
+                    loc = "Precursor Vault"; name = rollOracle("precursor_name", "Alien Construct");
+                    planetType = "N/A"; auth = "N/A"; proj = "N/A"; pop = "None"; renderType = "precursor";
+                } else if (poiCategory < 0.20) { 
+                    loc = "Asteroid Swarm"; name = rollOracle("asteroid_name", "Uncharted Debris");
+                    planetType = "N/A"; auth = "N/A"; proj = "N/A"; pop = "None"; renderType = "asteroid";
+                } else if (poiCategory < 0.25) { 
+                    loc = "Anomalous Signature"; name = "Unknown Contact";
+                    planetType = "N/A"; auth = "N/A"; proj = "N/A"; pop = "None"; renderType = "unknown";
+                } else if (poiCategory < 0.35) { 
                     loc = "Stellar Anomaly";
                     name = rollOracle("anomaly_name", anomalyRolls[Math.floor(Math.random() * anomalyRolls.length)]);
-                    planetType = "N/A";
-                    auth = "N/A"; proj = "N/A"; pop = "None";
-                } else if (poiCategory < 0.5) { 
+                    planetType = "N/A"; auth = "N/A"; proj = "N/A"; pop = "None"; renderType = "anomaly";
+                } else if (poiCategory < 0.50) { 
                     loc = "Uncharted Planet";
                     planetType = rollOracle("planet_class", planetRolls[Math.floor(Math.random() * planetRolls.length)]);
                     name = rollOracle("planet_name", `System ${secPrefix[Math.floor(Math.random()*secPrefix.length)]}-${i+1}`);
-                    auth = "N/A"; proj = "N/A"; pop = "None";
+                    auth = "N/A"; proj = "N/A"; pop = "None"; renderType = "planet";
                 } else { 
                     loc = rollOracle("settlement_location", locRolls[Math.floor(Math.random() * locRolls.length)]);
                     name = rollOracle("settlement_name", `Outpost ${i+1}`);
@@ -311,19 +338,22 @@
                     auth = rollOracle("authority", "None");
                     proj = rollOracle("settlement_projects", "Survival");
                     pop = rollOracle("population", "Hundreds");
+                    renderType = "settlement";
                 }
 
                 sector.settlements.push({
                     id: i, x: x, y: y,
                     name: name, location: loc,
                     population: pop, authority: auth,
-                    projects: proj, planet: planetType
+                    projects: proj, planet: planetType, renderType: renderType
                 });
             }
 
+            // Only generate structural passages between true settlements or planets
+            const trueSettlements = sector.settlements.filter(s => s.renderType === "settlement" || s.renderType === "planet");
             let passageCount = 0;
-            if (sector.settlements.length > 1) {
-                const shuffled = [...sector.settlements].sort(() => 0.5 - Math.random());
+            if (trueSettlements.length > 1) {
+                const shuffled = [...trueSettlements].sort(() => 0.5 - Math.random());
                 for (let i = 0; i < shuffled.length - 1; i++) {
                     if (passageCount >= rules.passages) break;
                     sector.passages.push([shuffled[i].id, shuffled[i+1].id]);
@@ -331,18 +361,29 @@
                 }
             }
             while (passageCount < rules.passages) {
-                sector.passages.push([Math.floor(Math.random() * sector.settlements.length), "OFF_MAP"]);
+                let rndIdx = trueSettlements.length > 0 ? trueSettlements[Math.floor(Math.random() * trueSettlements.length)].id : sector.settlements[0].id;
+                sector.passages.push([rndIdx, "OFF_MAP"]);
                 passageCount++;
             }
 
             let connName = rollOracle("character_name", "");
             if(!connName) connName = charNames[Math.floor(Math.random()*charNames.length)];
+            
+            // 30% chance the connection roams the map in an independent starship
+            let connIsShip = Math.random() < 0.3;
+            let nX = 0, nY = 0;
+            if (connIsShip) {
+                nX = Math.floor(Math.random() * bounds.w) + 1;
+                nY = Math.floor(Math.random() * bounds.h) + 1;
+            }
 
             sector.connection = {
                 name: connName,
                 role: rollOracle("character_role", "Scavenger"),
                 rank: "Dangerous",
-                home: sector.settlements[0].name
+                home: connIsShip ? "Independent Starship" : (trueSettlements[0]?.name || "Nomad"),
+                isShip: connIsShip,
+                x: nX, y: nY
             };
 
             let shipX, shipY, validJump;
@@ -417,7 +458,7 @@
                 let titleHtml = "";
                 let wikiUrl = null;
 
-                if (s.location === "Stellar Anomaly") {
+                if (s.renderType === "anomaly") {
                     for (let key in WIKI_LINKS) {
                         if (s.name.includes(key)) {
                             wikiUrl = WIKI_LINKS[key];
@@ -432,7 +473,6 @@
                     titleHtml = `<div class="data-title editable" contenteditable="true" spellcheck="false" onblur="editSectorField('name', this.innerText, true, ${idx})">${s.name}</div>`;
                 }
 
-                // NEW: Planet Link Generation
                 let planetHtml = '';
                 if (s.planet !== 'N/A') {
                     let pUrl = PLANET_LINKS[s.planet];
@@ -453,37 +493,39 @@
                     </div>
                 `;
 
+                // Token Generation & Space Clutter Injection
                 const token = document.createElement('div');
                 token.className = 'poi-token';
                 const pos = getHexPixel(s.x, s.y);
                 token.style.left = pos.x + 'px';
                 token.style.top = pos.y + 'px';
-                token.innerHTML = `<div class="poi-label">${s.name}</div>`;
-                
-                let ringColor = "#00ff9d"; 
-                let bgColor = "#000";
-                let shadow = "0 0 10px rgba(0,255,153,0.3)";
 
-                if (s.location === "Uncharted Planet") {
-                    ringColor = "#3b82f6";
-                    shadow = "0 0 10px rgba(59,130,246,0.3)";
-                } else if (s.planet !== 'N/A' && s.location !== "Uncharted Planet") {
-                    ringColor = "#fbbf24";
-                    shadow = "0 0 10px rgba(251,191,36,0.3)";
-                } else if (s.location === "Stellar Anomaly") {
-                    if (s.name.includes("Black Hole")) {
-                        ringColor = "#8b5cf6"; bgColor = "#1e1b4b"; shadow = "0 0 15px #8b5cf6";
-                    } else if (s.name.includes("Star") || s.name.includes("Pulsar")) {
-                        ringColor = "#fcd34d"; bgColor = "#b45309"; shadow = "0 0 20px #fcd34d";
-                    } else {
-                        ringColor = "#a8a29e";
-                        shadow = "0 0 10px rgba(168,162,158,0.3)";
-                    }
+                // Style injection based on renderType
+                if (s.renderType === 'derelict') {
+                    token.classList.add('token-derelict');
+                } else if (s.renderType === 'precursor') {
+                    token.classList.add('token-precursor');
+                    token.style.backgroundColor = '#a855f7'; 
+                } else if (s.renderType === 'asteroid') {
+                    token.classList.add('token-asteroid');
+                    token.innerText = '✱';
+                } else if (s.renderType === 'unknown') {
+                    token.classList.add('token-unknown');
+                    token.innerText = '?';
+                } else if (s.renderType === 'planet') {
+                    token.style.borderColor = "#3b82f6";
+                    token.style.boxShadow = "0 0 10px rgba(59,130,246,0.3)";
+                } else if (s.renderType === 'anomaly') {
+                    if (s.name.includes("Black Hole")) { token.style.borderColor = "#8b5cf6"; token.style.backgroundColor = "#1e1b4b"; token.style.boxShadow = "0 0 15px #8b5cf6"; } 
+                    else if (s.name.includes("Star") || s.name.includes("Pulsar")) { token.style.borderColor = "#fcd34d"; token.style.backgroundColor = "#b45309"; token.style.boxShadow = "0 0 20px #fcd34d"; } 
+                    else { token.style.borderColor = "#a8a29e"; token.style.boxShadow = "0 0 10px rgba(168,162,158,0.3)"; }
                 }
 
-                token.style.borderColor = ringColor;
-                token.style.backgroundColor = bgColor;
-                token.style.boxShadow = shadow;
+                // Add the label as a safe child element so innerText changes don't delete it
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'poi-label';
+                labelDiv.innerText = s.name;
+                token.appendChild(labelDiv);
 
                 contentLayer.appendChild(token);
             });
@@ -511,6 +553,23 @@
                 passagesLayer.appendChild(line);
             });
 
+            // Render roaming NPC Ship if they have one
+            if (activeSector.connection && activeSector.connection.isShip) {
+                const npcShip = document.createElement('div');
+                npcShip.className = 'npc-ship-token';
+                const nPos = getHexPixel(activeSector.connection.x, activeSector.connection.y);
+                npcShip.style.left = nPos.x + 'px';
+                npcShip.style.top = nPos.y + 'px';
+                
+                const nLabel = document.createElement('div');
+                nLabel.className = 'poi-label';
+                nLabel.innerText = activeSector.connection.name;
+                npcShip.appendChild(nLabel);
+                
+                contentLayer.appendChild(npcShip);
+            }
+
+            // Render Player Ship
             shipElement = document.createElement('div');
             shipElement.id = 'ship-token';
             const shipPos = getHexPixel(activeSector.ship.x, activeSector.ship.y);
