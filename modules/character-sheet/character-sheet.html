@@ -1,5 +1,5 @@
 <style>
-    #sheet-container { background: #0b0d12; color: #00ff9d; font-family: 'Exo 2', sans-serif; padding: 20px; box-sizing: border-box; }
+    #sheet-container { background: #0b0d12; color: #00ff9d; font-family: 'Exo 2', sans-serif; padding: 20px; box-sizing: border-box; position: relative; overflow-x: hidden; min-height: 100vh; }
     .section-title { font-size: 0.7rem; letter-spacing: 3px; color: #454d5d; border-bottom: 1px solid #1a1c23; padding-bottom: 5px; margin: 25px 0 15px 0; text-transform: uppercase; }
     
     /* Input Styling */
@@ -9,20 +9,21 @@
 
     /* Stats Grid */
     .stat-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
-    .stat-btn { background: #161922; border: 1px solid #454d5d; padding: 10px; text-align: center; cursor: pointer; border-radius: 4px; transition: 0.2s; }
-    .stat-btn:hover { border-color: #00ff9d; background: rgba(0,255,153,0.1); transform: translateY(-2px); }
-    .stat-val { display: block; font-size: 1.8rem; font-weight: bold; color: #bcdee7; }
-    .stat-label { font-size: 0.6rem; text-transform: uppercase; opacity: 0.6; }
+    .stat-box { background: #161922; border: 1px solid #454d5d; padding: 10px 5px; text-align: center; border-radius: 4px; transition: 0.2s; }
+    .stat-box:hover { border-color: #00ff9d; background: rgba(0,255,153,0.05); }
+    .stat-val { font-size: 1.8rem; font-weight: bold; color: #bcdee7; cursor: pointer; padding: 0 10px; }
+    .stat-val:hover { color: #fff; text-shadow: 0 0 8px rgba(188,222,231,0.5); }
+    .stat-label { font-size: 0.6rem; text-transform: uppercase; opacity: 0.6; margin-bottom: 5px; display: block; }
+    .tiny-btn { background: #0b0d12; border: 1px solid #454d5d; color: #aab; cursor: pointer; padding: 2px 8px; font-weight: bold; border-radius: 2px; }
+    .tiny-btn:hover { background: #00ff9d; color: #000; border-color: #00ff9d; }
 
-    /* Resource Tracks */
+    /* Resource Tracks & Warning Tags */
     .track-wrapper { background: #161922; padding: 10px 15px; margin-bottom: 5px; border-radius: 4px; border: 1px solid #454d5d; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;}
     .track-label { font-size: 0.8rem; font-weight: bold; width: 150px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
     .track-dots { display: flex; gap: 4px; flex-wrap: wrap; }
     .dot { width: 14px; height: 14px; border: 1px solid #454d5d; cursor: pointer; transition: 0.2s; }
     .dot:hover { border-color: #00ff9d; }
     .dot.active { background: #00ff9d; box-shadow: 0 0 8px rgba(0, 255, 153, 0.5); border-color: #00ff9d; }
-    
-    /* Warning Tags */
     .warn-tag { display: none; background: #ff005522; color: #ff0055; border: 1px solid #ff0055; font-size: 0.55rem; padding: 2px 4px; border-radius: 2px; font-family: 'Share Tech Mono'; letter-spacing: 1px; }
     .warn-tag.active { display: inline-block; }
 
@@ -35,12 +36,26 @@
     .impact-label:hover { color: #fff; }
     .impact-label input { cursor: pointer; accent-color: #ff0055; width: 14px; height: 14px; margin: 0; }
 
-    /* Buttons & UI Controls */
+    /* Action & UI Controls */
     .action-btn { height: 42px; background: #3b82f6; color: #000; border: none; padding: 0 15px; font-family: 'Share Tech Mono'; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap; border-radius: 3px; }
     .action-btn:hover { background: #60a5fa; }
     .burn-btn { height: 42px; background: #ff0055; color: #fff; border: none; padding: 0 15px; font-family: 'Share Tech Mono'; font-weight: bold; cursor: pointer; border-radius: 3px; transition: 0.2s; white-space: nowrap; }
     .burn-btn:hover { background: #ff3377; box-shadow: 0 0 10px rgba(255,0,85,0.4); }
 
+    /* Side Panel for Tracks & Clocks */
+    #tracker-panel {
+        position: absolute; top: 0; right: -100%; width: 100%; max-width: 450px; height: 100%;
+        background: #0b0d12; border-left: 2px solid #3b82f6; transition: right 0.3s ease-in-out;
+        z-index: 50; padding: 20px; box-sizing: border-box; overflow-y: auto;
+        box-shadow: -5px 0 20px rgba(0,0,0,0.8); display: flex; flex-direction: column;
+    }
+    #tracker-panel.open { right: 0; }
+
+    /* Legacy / XP Compact UI */
+    .legacy-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px; margin-bottom: 20px; }
+    .legacy-box { background: #161922; padding: 10px; border: 1px solid #454d5d; border-radius: 4px; text-align: center; }
+    .legacy-lbl { font-size: 0.55rem; color: #aab; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+    
     /* Roll Overlay */
     #roll-overlay { background: #000; border: 1px solid #00ff9d; padding: 15px; margin-top: 20px; display: none; box-shadow: inset 0 0 15px rgba(0, 255, 153, 0.1); }
     .roll-close { float: right; cursor: pointer; color: #454d5d; font-size: 0.8rem; }
@@ -59,37 +74,65 @@
 
     <div class="section-title">CORE ATTRIBUTES</div>
     <div class="stat-grid">
-        <div class="stat-btn" onclick="triggerMoveRoll('Edge')"><span class="stat-label">Edge</span><span id="v-edge" class="stat-val">0</span></div>
-        <div class="stat-btn" onclick="triggerMoveRoll('Heart')"><span class="stat-label">Heart</span><span id="v-heart" class="stat-val">0</span></div>
-        <div class="stat-btn" onclick="triggerMoveRoll('Iron')"><span class="stat-label">Iron</span><span id="v-iron" class="stat-val">0</span></div>
-        <div class="stat-btn" onclick="triggerMoveRoll('Shadow')"><span class="stat-label">Shadow</span><span id="v-shadow" class="stat-val">0</span></div>
-        <div class="stat-btn" onclick="triggerMoveRoll('Wits')"><span class="stat-label">Wits</span><span id="v-wits" class="stat-val">0</span></div>
+        <div class="stat-box">
+            <span class="stat-label">Edge</span>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <button class="tiny-btn" onclick="adjStat('edge', -1)">-</button>
+                <span id="v-edge" class="stat-val" title="Click to Roll" onclick="triggerMoveRoll('Edge')">0</span>
+                <button class="tiny-btn" onclick="adjStat('edge', 1)">+</button>
+            </div>
+        </div>
+        <div class="stat-box">
+            <span class="stat-label">Heart</span>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <button class="tiny-btn" onclick="adjStat('heart', -1)">-</button>
+                <span id="v-heart" class="stat-val" title="Click to Roll" onclick="triggerMoveRoll('Heart')">0</span>
+                <button class="tiny-btn" onclick="adjStat('heart', 1)">+</button>
+            </div>
+        </div>
+        <div class="stat-box">
+            <span class="stat-label">Iron</span>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <button class="tiny-btn" onclick="adjStat('iron', -1)">-</button>
+                <span id="v-iron" class="stat-val" title="Click to Roll" onclick="triggerMoveRoll('Iron')">0</span>
+                <button class="tiny-btn" onclick="adjStat('iron', 1)">+</button>
+            </div>
+        </div>
+        <div class="stat-box">
+            <span class="stat-label">Shadow</span>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <button class="tiny-btn" onclick="adjStat('shadow', -1)">-</button>
+                <span id="v-shadow" class="stat-val" title="Click to Roll" onclick="triggerMoveRoll('Shadow')">0</span>
+                <button class="tiny-btn" onclick="adjStat('shadow', 1)">+</button>
+            </div>
+        </div>
+        <div class="stat-box">
+            <span class="stat-label">Wits</span>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <button class="tiny-btn" onclick="adjStat('wits', -1)">-</button>
+                <span id="v-wits" class="stat-val" title="Click to Roll" onclick="triggerMoveRoll('Wits')">0</span>
+                <button class="tiny-btn" onclick="adjStat('wits', 1)">+</button>
+            </div>
+        </div>
     </div>
 
-    <div style="background: #1a1c23; border: 1px solid #454d5d; padding: 15px; border-left: 4px solid #3b82f6; margin-bottom: 20px; font-family: 'Exo 2', sans-serif;">
-        <div style="font-size: 0.7rem; color: #3b82f6; letter-spacing: 2px; margin-bottom: 10px; font-family: 'Share Tech Mono';">UNIVERSAL ACTION ROLLER</div>
-        <div style="display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap;">
-            <div style="flex-grow: 1; min-width: 120px;">
-                <label style="font-size: 0.8rem; color: #aab; display: block; margin-bottom: 5px;">TOTAL ADDS (Stat + Bonuses)</label>
+    <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+        
+        <div style="flex: 1; min-width: 250px; background: #1a1c23; border: 1px solid #454d5d; border-left: 4px solid #3b82f6; padding: 10px 15px; display: flex; align-items: flex-end; gap: 10px; border-radius: 4px;">
+            <div style="flex-grow: 1;">
+                <label style="font-size: 0.6rem; color: #aab; display: block; margin-bottom: 5px;">ADDS (+Bonus)</label>
                 <input type="number" id="dice-modifier" value="0" style="width: 100%; box-sizing: border-box; height: 42px; background: #0b0d12; border: 1px solid #454d5d; color: #fff; text-align: center; font-size: 1.2rem; font-family: 'Share Tech Mono';">
             </div>
-            <button class="action-btn" onclick="executeActionRoll()">EXECUTE ROLL</button>
-            <button onclick="executeD100Roll()" style="height: 42px; background: #161922; color: #bcdee7; border: 1px solid #454d5d; padding: 0 15px; font-family: 'Share Tech Mono'; cursor: pointer; transition: 0.2s; white-space: nowrap; border-radius: 3px;">d100</button>
+            <button class="action-btn" onclick="executeActionRoll()">ROLL</button>
+            <button class="action-btn" style="background:#161922; color:#bcdee7; border: 1px solid #454d5d;" onclick="executeD100Roll()">d100</button>
         </div>
-    </div>
 
-    <div class="section-title">CONDITIONS & MOMENTUM</div>
-    
-    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px; background: #1a1c23; padding: 10px 15px; border: 1px solid #454d5d; border-left: 4px solid #bcdee7; border-radius: 4px; margin-bottom: 15px;">
-        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <button class="burn-btn" onclick="burnMomentum()" title="Click to Burn Momentum">MOMENTUM</button>
-            <input type="number" id="v-momentum" class="term-input" style="width: 70px; height: 42px; text-align: center; font-size: 1.4rem; font-weight: bold; margin: 0;" onchange="saveField('momentum', this.value)">
+        <div style="flex: 1; min-width: 250px; background: #1a1c23; border: 1px solid #454d5d; border-left: 4px solid #bcdee7; padding: 10px 15px; display: flex; align-items: flex-end; gap: 10px; border-radius: 4px;">
+            <button class="burn-btn" style="flex-grow: 1;" onclick="burnMomentum()" title="Burn Momentum">MOMENTUM</button>
+            <input type="number" id="v-momentum" class="term-input" style="width: 65px; height: 42px; text-align: center; font-size: 1.4rem; font-weight: bold; margin: 0; padding: 0;" onchange="saveField('momentum', this.value)">
+            <button class="action-btn" id="btn-mom-reset" style="background:#161922; color:#fff; border: 1px solid #454d5d; min-width: 90px;" onclick="resetMomentum()">R 2/10</button>
         </div>
-        <div style="display: flex; gap: 15px; font-size: 0.65rem; color: #aab; text-align: center;">
-            <div>MAX<br><span id="mom-max" style="font-size: 1rem; color: #fff; font-weight: bold;">10</span></div>
-            <div>RESET<br><span id="mom-reset" style="font-size: 1rem; color: #fff; font-weight: bold;">2</span></div>
-        </div>
-        <button class="action-btn" onclick="resetMomentum()">RESET</button>
+
     </div>
 
     <button class="drawer-btn" onclick="toggleDrawer()">
@@ -104,78 +147,37 @@
         <label class="impact-label"><input type="checkbox" id="i-unprepared" onchange="toggleImpact('unprepared', this.checked)"> UNPREPARED (Supply)</label>
     </div>
 
+    <div class="section-title" style="margin-top: 15px;">CONDITION TRACKS</div>
     <div id="tracks-container"></div>
 
-    <div class="section-title">PROGRESS & CLOCKS</div>
-    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
-        
-        <div style="font-size: 0.6rem; color: #aab; letter-spacing: 1px;">ACTIVE PROGRESS (TICKS / 40)</div>
-        <div style="display: flex; gap: 10px; background: #161922; padding: 10px; border: 1px solid #454d5d; border-radius: 4px; align-items: center; flex-wrap: wrap;">
-            <input type="text" id="p-track1-name" class="term-input" placeholder="VOW / EXPEDITION NAME" style="flex-grow: 1; min-width: 150px;" onchange="saveField('p_track1_name', this.value)">
-            <input type="number" id="p-track1-ticks" class="term-input" placeholder="0" style="width: 80px; text-align: center;" min="0" max="40" onchange="saveField('p_track1_ticks', this.value)">
-        </div>
-        <div style="display: flex; gap: 10px; background: #161922; padding: 10px; border: 1px solid #454d5d; border-radius: 4px; align-items: center; flex-wrap: wrap;">
-            <input type="text" id="p-track2-name" class="term-input" placeholder="VOW / EXPEDITION NAME" style="flex-grow: 1; min-width: 150px;" onchange="saveField('p_track2_name', this.value)">
-            <input type="number" id="p-track2-ticks" class="term-input" placeholder="0" style="width: 80px; text-align: center;" min="0" max="40" onchange="saveField('p_track2_ticks', this.value)">
-        </div>
-        <div style="display: flex; gap: 10px; background: #161922; padding: 10px; border: 1px solid #454d5d; border-radius: 4px; align-items: center; flex-wrap: wrap;">
-            <input type="text" id="p-track3-name" class="term-input" placeholder="COMBAT / THREAT NAME" style="flex-grow: 1; min-width: 150px;" onchange="saveField('p_track3_name', this.value)">
-            <input type="number" id="p-track3-ticks" class="term-input" placeholder="0" style="width: 80px; text-align: center;" min="0" max="40" onchange="saveField('p_track3_ticks', this.value)">
-        </div>
-
-        <div style="font-size: 0.6rem; color: #aab; letter-spacing: 1px; margin-top: 10px;">ACTIVE CLOCKS (SEGMENTS)</div>
-        <div style="display: flex; gap: 10px; background: #161922; padding: 10px; border: 1px dashed #454d5d; border-radius: 4px; align-items: center; flex-wrap: wrap;">
-            <input type="text" id="c-clock1-name" class="term-input" placeholder="CLOCK NAME" style="flex-grow: 1; min-width: 120px;" onchange="saveField('c_clock1_name', this.value)">
-            <div style="display: flex; align-items: center; gap: 5px;">
-                <input type="number" id="c-clock1-val" class="term-input" placeholder="0" style="width: 60px; text-align: center;" min="0" onchange="saveField('c_clock1_val', this.value)">
-                <span style="color: #aab;">/</span>
-                <select id="c-clock1-max" class="term-input" style="width: 70px; padding: 8px;" onchange="saveField('c_clock1_max', this.value)">
-                    <option value="4">4</option>
-                    <option value="6">6</option>
-                    <option value="8">8</option>
-                    <option value="10">10</option>
-                </select>
-            </div>
-        </div>
-        <div style="display: flex; gap: 10px; background: #161922; padding: 10px; border: 1px dashed #454d5d; border-radius: 4px; align-items: center; flex-wrap: wrap;">
-            <input type="text" id="c-clock2-name" class="term-input" placeholder="CLOCK NAME" style="flex-grow: 1; min-width: 120px;" onchange="saveField('c_clock2_name', this.value)">
-            <div style="display: flex; align-items: center; gap: 5px;">
-                <input type="number" id="c-clock2-val" class="term-input" placeholder="0" style="width: 60px; text-align: center;" min="0" onchange="saveField('c_clock2_val', this.value)">
-                <span style="color: #aab;">/</span>
-                <select id="c-clock2-max" class="term-input" style="width: 70px; padding: 8px;" onchange="saveField('c_clock2_max', this.value)">
-                    <option value="4">4</option>
-                    <option value="6">6</option>
-                    <option value="8">8</option>
-                    <option value="10">10</option>
-                </select>
-            </div>
-        </div>
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin: 25px 0 15px 0; border-bottom: 1px solid #1a1c23; padding-bottom: 5px;">
+        <div style="font-size: 0.7rem; letter-spacing: 3px; color: #454d5d; text-transform: uppercase;">ACTIVE TRACKS & CLOCKS</div>
+        <button class="action-btn" style="height: 25px; padding: 0 10px; font-size: 0.7rem; border-radius: 2px;" onclick="openTrackerModal()">[ MANAGE ]</button>
     </div>
+    <div id="dashboard-trackers" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+        </div>
 
     <div class="section-title">LEGACY & EXPERIENCE</div>
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 15px; margin-bottom: 20px;">
-        <div style="background: #161922; padding: 10px; border: 1px solid #454d5d; border-radius: 4px;">
-            <div style="font-size: 0.6rem; color: #aab; margin-bottom: 5px; text-transform: uppercase;">Quests (Ticks / 40)</div>
-            <input type="number" id="l-quests" class="term-input" min="0" max="40" onchange="saveField('l_quests', this.value)">
+    <div class="legacy-grid">
+        <div class="legacy-box">
+            <div class="legacy-lbl">Quests (40)</div>
+            <input type="number" id="l-quests" class="term-input" style="text-align:center; padding:5px;" min="0" max="40" onchange="updateLegacy('quests', this.value)">
         </div>
-        <div style="background: #161922; padding: 10px; border: 1px solid #454d5d; border-radius: 4px;">
-            <div style="font-size: 0.6rem; color: #aab; margin-bottom: 5px; text-transform: uppercase;">Bonds (Ticks / 40)</div>
-            <input type="number" id="l-bonds" class="term-input" min="0" max="40" onchange="saveField('l_bonds', this.value)">
+        <div class="legacy-box">
+            <div class="legacy-lbl">Bonds (40)</div>
+            <input type="number" id="l-bonds" class="term-input" style="text-align:center; padding:5px;" min="0" max="40" onchange="updateLegacy('bonds', this.value)">
         </div>
-        <div style="background: #161922; padding: 10px; border: 1px solid #454d5d; border-radius: 4px;">
-            <div style="font-size: 0.6rem; color: #aab; margin-bottom: 5px; text-transform: uppercase;">Discoveries (Ticks / 40)</div>
-            <input type="number" id="l-discoveries" class="term-input" min="0" max="40" onchange="saveField('l_discoveries', this.value)">
+        <div class="legacy-box">
+            <div class="legacy-lbl">Discover (40)</div>
+            <input type="number" id="l-discoveries" class="term-input" style="text-align:center; padding:5px;" min="0" max="40" onchange="updateLegacy('discoveries', this.value)">
         </div>
-    </div>
-    
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-        <div style="background: #161922; padding: 10px; border: 1px solid #00ff9d; border-radius: 4px;">
-            <div style="font-size: 0.6rem; color: #00ff9d; margin-bottom: 5px; text-transform: uppercase;">Earned XP</div>
-            <input type="number" id="x-earned" class="term-input" min="0" onchange="saveField('x_earned', this.value)">
+        <div class="legacy-box" style="border-color: #00ff9d; background: #00ff9d11;">
+            <div class="legacy-lbl" style="color: #00ff9d;">XP Earned</div>
+            <input type="number" id="x-earned" class="term-input" style="text-align:center; padding:5px; border-color:#00ff9d;" min="0" onchange="saveField('x_earned', this.value)">
         </div>
-        <div style="background: #161922; padding: 10px; border: 1px solid #ff0055; border-radius: 4px;">
-            <div style="font-size: 0.6rem; color: #ff0055; margin-bottom: 5px; text-transform: uppercase;">Spent XP</div>
-            <input type="number" id="x-spent" class="term-input" min="0" onchange="saveField('x_spent', this.value)">
+        <div class="legacy-box" style="border-color: #ff0055; background: #ff005511;">
+            <div class="legacy-lbl" style="color: #ff0055;">XP Spent</div>
+            <input type="number" id="x-spent" class="term-input" style="text-align:center; padding:5px; border-color:#ff0055;" min="0" onchange="saveField('x_spent', this.value)">
         </div>
     </div>
 
@@ -184,71 +186,76 @@
         <div id="roll-res" style="font-size: 1.2rem; font-weight: bold;">RESULT</div>
         <div id="roll-details" style="font-family: monospace; opacity: 0.7; margin-top: 5px;">Dice details...</div>
     </div>
+
+    <div id="tracker-panel">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #454d5d; padding-bottom: 10px;">
+            <span style="font-size: 1.1rem; letter-spacing: 2px;">TRACKER REGISTRY</span>
+            <span style="cursor:pointer; color:#ff0055; font-weight:bold;" onclick="closeTrackerModal()">[X] CLOSE</span>
+        </div>
+        
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <button class="action-btn" style="flex: 1;" onclick="addNewTracker('track')">+ ADD TRACK</button>
+            <button class="action-btn" style="flex: 1; background: #161922; color: #bcdee7; border: 1px solid #454d5d;" onclick="addNewTracker('clock')">+ ADD CLOCK</button>
+        </div>
+
+        <div style="font-size: 0.65rem; color: #aab; margin-bottom: 10px;">Select up to 2 Tracks and 2 Clocks for the Dashboard. Changes save automatically.</div>
+        <div id="modal-tracker-list" style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 30px;">
+            </div>
+    </div>
 </div>
 
 <script>
+    let masterTrackers = []; // Holds custom tracks & clocks
+
     async function initSheet() {
-        console.log("Sheet Module: Initializing for ID:", window.charId);
         try {
             if (window.dataswornReady) await window.dataswornReady;
-            
             const data = await window.gLink.loadStatsServer(window.charId);
-            const sheetData = data || {};
-            window.activeCharData = sheetData;
+            window.activeCharData = data || {};
             
-            document.getElementById('char-sheet-display').innerText = (sheetData.name || window.charId).toUpperCase();
+            document.getElementById('char-sheet-display').innerText = (window.activeCharData.name || window.charId).toUpperCase();
+            
+            // Core Stats
             ['edge','heart','iron','shadow','wits'].forEach(s => {
                 const el = document.getElementById(`v-${s}`);
-                if (el) el.innerText = sheetData[s] || 0;
+                if (el) el.innerText = window.activeCharData[s] || 0;
             });
 
+            // Text Fields
             ['name', 'pronouns', 'background', 'look'].forEach(f => {
-                if(document.getElementById('f-'+f)) document.getElementById('f-'+f).value = sheetData[f] || "";
+                if(document.getElementById('f-'+f)) document.getElementById('f-'+f).value = window.activeCharData[f] || "";
             });
 
-            // Load Progress Tracks
-            ['1', '2', '3'].forEach(num => {
-                if(document.getElementById('p-track'+num+'-name')) document.getElementById('p-track'+num+'-name').value = sheetData['p_track'+num+'_name'] || "";
-                if(document.getElementById('p-track'+num+'-ticks')) document.getElementById('p-track'+num+'-ticks').value = sheetData['p_track'+num+'_ticks'] || "";
-            });
-
-            // Load Clocks
-            ['1', '2'].forEach(num => {
-                if(document.getElementById('c-clock'+num+'-name')) document.getElementById('c-clock'+num+'-name').value = sheetData['c_clock'+num+'_name'] || "";
-                if(document.getElementById('c-clock'+num+'-val')) document.getElementById('c-clock'+num+'-val').value = sheetData['c_clock'+num+'_val'] || "";
-                if(document.getElementById('c-clock'+num+'-max')) document.getElementById('c-clock'+num+'-max').value = sheetData['c_clock'+num+'_max'] || 4;
-            });
-
+            // Legacy & XP
             ['quests', 'bonds', 'discoveries'].forEach(l => {
-                if(document.getElementById('l-'+l)) document.getElementById('l-'+l).value = sheetData['l_'+l] || 0;
+                if(document.getElementById('l-'+l)) document.getElementById('l-'+l).value = window.activeCharData['l_'+l] || 0;
             });
             ['earned', 'spent'].forEach(x => {
-                if(document.getElementById('x-'+x)) document.getElementById('x-'+x).value = sheetData['x_'+x] || 0;
+                if(document.getElementById('x-'+x)) document.getElementById('x-'+x).value = window.activeCharData['x_'+x] || 0;
             });
 
-            document.getElementById('v-momentum').value = parseInt(sheetData.momentum ?? 2);
+            document.getElementById('v-momentum').value = parseInt(window.activeCharData.momentum ?? 2);
 
+            // Condition Tracks & Impacts
             document.getElementById('tracks-container').innerHTML = '';
-            renderResource('health', 0, 5, parseInt(sheetData.health ?? 5), 'tracks-container', [
-                {id: 'wounded', label: 'WOUNDED'}, {id: 'battered', label: 'BATTERED'}
-            ]);
-            renderResource('spirit', 0, 5, parseInt(sheetData.spirit ?? 5), 'tracks-container', [
-                {id: 'shaken', label: 'SHAKEN'}, {id: 'cursed', label: 'CURSED'}
-            ]);
-            renderResource('supply', 0, 5, parseInt(sheetData.supply ?? 5), 'tracks-container', [
-                {id: 'unprepared', label: 'UNPREPARED'}
-            ]);
+            renderResource('health', 0, 5, parseInt(window.activeCharData.health ?? 5), 'tracks-container', [{id: 'wounded', label: 'WOUNDED'}, {id: 'battered', label: 'BATTERED'}]);
+            renderResource('spirit', 0, 5, parseInt(window.activeCharData.spirit ?? 5), 'tracks-container', [{id: 'shaken', label: 'SHAKEN'}, {id: 'cursed', label: 'CURSED'}]);
+            renderResource('supply', 0, 5, parseInt(window.activeCharData.supply ?? 5), 'tracks-container', [{id: 'unprepared', label: 'UNPREPARED'}]);
 
             ['wounded', 'battered', 'shaken', 'cursed', 'unprepared'].forEach(i => {
-                const isChecked = (sheetData['i_'+i] === 'true' || sheetData['i_'+i] === true);
+                const isChecked = (window.activeCharData['i_'+i] === 'true' || window.activeCharData['i_'+i] === true);
                 const el = document.getElementById('i-'+i);
                 if(el) el.checked = isChecked;
-                
                 const tagEl = document.getElementById('tag-'+i);
                 if(tagEl && isChecked) tagEl.classList.add('active');
             });
-
             recalcMomentum();
+
+            // Load Custom Trackers
+            try {
+                masterTrackers = JSON.parse(window.activeCharData.trackers_json || '[]');
+            } catch(e) { masterTrackers = []; }
+            renderTrackers();
 
         } catch (err) {
             console.error("Sheet Init Failure:", err);
@@ -256,17 +263,53 @@
         }
     }
 
+    function saveField(key, value) {
+        if (!window.activeCharData) window.activeCharData = {};
+        window.activeCharData[key] = value;
+        if (window.gLink) window.gLink.saveStatServer(window.charId, key, value);
+    }
+
+    // --- STAT ADJUSTERS ---
+    window.adjStat = function(stat, amount) {
+        let current = parseInt(window.activeCharData[stat] || 0);
+        current += amount;
+        if (current < 0) current = 0;
+        document.getElementById(`v-${stat}`).innerText = current;
+        saveField(stat, current);
+    };
+
+    // --- AUTOMATED LEGACY XP ---
+    window.updateLegacy = async function(track, newVal) {
+        newVal = parseInt(newVal) || 0;
+        if(newVal > 40) newVal = 40;
+        if(newVal < 0) newVal = 0;
+        
+        const oldVal = parseInt(window.activeCharData['l_' + track] || 0);
+        const oldBoxes = Math.floor(oldVal / 4);
+        const newBoxes = Math.floor(newVal / 4);
+        
+        // If a new box was filled, automatically add 2 XP per box
+        if (newBoxes > oldBoxes) {
+            const xpGain = (newBoxes - oldBoxes) * 2;
+            let currentXP = parseInt(document.getElementById('x-earned').value) || 0;
+            currentXP += xpGain;
+            document.getElementById('x-earned').value = currentXP;
+            saveField('x_earned', currentXP);
+            
+            if (window.gLink && typeof window.gLink.logServer === 'function') {
+                await window.gLink.logServer(window.charId, `[ADVANCEMENT] Filled a box on the ${track.toUpperCase()} track. Gained ${xpGain} XP.`);
+            }
+        }
+        document.getElementById('l-' + track).value = newVal;
+        saveField('l_' + track, newVal);
+    };
+
+    // --- IMPACTS & MOMENTUM ---
     function toggleDrawer() {
         const drawer = document.getElementById('impact-drawer');
         const icon = document.getElementById('drawer-icon');
         drawer.classList.toggle('open');
         icon.innerText = drawer.classList.contains('open') ? "[-] IMPACT SYSTEM DEBILITIES" : "[+] IMPACT SYSTEM DEBILITIES";
-    }
-
-    function saveField(key, value) {
-        if (!window.activeCharData) window.activeCharData = {};
-        window.activeCharData[key] = value;
-        if (window.gLink) window.gLink.saveStatServer(window.charId, key, value);
     }
 
     window.toggleImpact = function(id, isChecked) {
@@ -287,16 +330,15 @@
         });
         
         document.getElementById('impact-counter').innerText = `${impactCount} ACTIVE`;
-        if (impactCount > 0) document.getElementById('impact-counter').style.color = "#ff0055";
-        else document.getElementById('impact-counter').style.color = "#fff";
+        document.getElementById('impact-counter').style.color = impactCount > 0 ? "#ff0055" : "#fff";
 
         const maxMom = 10 - impactCount;
         let resetMom = 2;
         if (impactCount === 1) resetMom = 1;
         if (impactCount >= 2) resetMom = 0;
         
-        document.getElementById('mom-max').innerText = maxMom;
-        document.getElementById('mom-reset').innerText = resetMom;
+        // Update Fraction on Button
+        document.getElementById('btn-mom-reset').innerText = `R ${resetMom}/${maxMom}`;
         
         const currentMomEl = document.getElementById('v-momentum');
         let currentMom = parseInt(currentMomEl.value) || 0;
@@ -308,36 +350,32 @@
 
     window.burnMomentum = async function() {
         const current = document.getElementById('v-momentum').value;
-        const resetVal = parseInt(document.getElementById('mom-reset').innerText);
+        const resetStr = document.getElementById('btn-mom-reset').innerText; // e.g. "R 2/10"
+        const resetVal = parseInt(resetStr.split(' ')[1].split('/')[0]); // extracts the 2
+        
         document.getElementById('v-momentum').value = resetVal;
         saveField('momentum', resetVal);
         
-        const logMsg = `[MOMENTUM BURNED]\nBurned from ${current} down to ${resetVal}.`;
         if (window.gLink && typeof window.gLink.logServer === 'function') {
-            await window.gLink.logServer(window.charId, logMsg);
+            await window.gLink.logServer(window.charId, `[MOMENTUM BURNED]\nBurned from ${current} down to ${resetVal}.`);
         }
     };
 
     window.resetMomentum = function() {
-        const resetVal = parseInt(document.getElementById('mom-reset').innerText);
+        const resetStr = document.getElementById('btn-mom-reset').innerText;
+        const resetVal = parseInt(resetStr.split(' ')[1].split('/')[0]);
         document.getElementById('v-momentum').value = resetVal;
         saveField('momentum', resetVal);
     };
 
+    // --- CONDITION TRACKS UI ---
     function renderResource(name, min, max, current, containerId, warnings = []) {
         const container = document.getElementById(containerId);
         const wrapper = document.createElement('div');
         wrapper.className = 'track-wrapper';
 
-        let warningHTML = '';
-        warnings.forEach(w => {
-            warningHTML += `<span id="tag-${w.id}" class="warn-tag">[${w.label}]</span>`;
-        });
-
-        wrapper.innerHTML = `
-            <span class="track-label">${name.toUpperCase()} ${warningHTML}</span>
-            <div class="track-dots" id="dots-${name}"></div>
-        `;
+        let warningHTML = warnings.map(w => `<span id="tag-${w.id}" class="warn-tag">[${w.label}]</span>`).join('');
+        wrapper.innerHTML = `<span class="track-label">${name.toUpperCase()} ${warningHTML}</span><div class="track-dots" id="dots-${name}"></div>`;
         container.appendChild(wrapper);
 
         const dotBox = wrapper.querySelector('.track-dots');
@@ -345,7 +383,10 @@
             const dot = document.createElement('div');
             dot.className = `dot ${i <= current ? 'active' : ''}`;
             dot.onclick = () => {
-                updateDotsUI(name, i, min, max);
+                wrapper.querySelectorAll('.dot').forEach((d, idx) => {
+                    if ((min + idx) <= i) d.classList.add('active');
+                    else d.classList.remove('active');
+                });
                 window.activeCharData[name] = i;
                 saveField(name, i);
             };
@@ -353,19 +394,105 @@
         }
     }
 
-    function updateDotsUI(name, val, min, max) {
-        const dots = document.querySelectorAll(`#dots-${name} .dot`);
-        dots.forEach((dot, index) => {
-            if ((min + index) <= val) dot.classList.add('active');
-            else dot.classList.remove('active');
-        });
+    // --- DYNAMIC TRACKERS & CLOCKS ---
+    window.openTrackerModal = () => document.getElementById('tracker-panel').classList.add('open');
+    window.closeTrackerModal = () => document.getElementById('tracker-panel').classList.remove('open');
+
+    window.addNewTracker = function(type) {
+        masterTrackers.push({ id: Date.now(), type: type, name: `New ${type}`, val: 0, max: type === 'track' ? 40 : 4, dashboard: false });
+        syncTrackers();
+    };
+
+    window.deleteTracker = function(id) {
+        masterTrackers = masterTrackers.filter(t => t.id !== id);
+        syncTrackers();
+    };
+
+    window.updateTracker = function(id, field, value) {
+        const t = masterTrackers.find(t => t.id === id);
+        if(t) {
+            if (field === 'dashboard') {
+                // Enforce Max 2 limit per type
+                const activeCount = masterTrackers.filter(x => x.type === t.type && x.dashboard).length;
+                if (value === true && activeCount >= 2) {
+                    alert(`You can only pin 2 ${t.type}s to the dashboard at once.`);
+                    return syncTrackers(); // Refresh to uncheck
+                }
+            }
+            t[field] = value;
+            syncTrackers();
+        }
+    };
+
+    function syncTrackers() {
+        saveField('trackers_json', JSON.stringify(masterTrackers));
+        renderTrackers();
     }
 
+    function renderTrackers() {
+        const modalList = document.getElementById('modal-tracker-list');
+        const dashList = document.getElementById('dashboard-trackers');
+        modalList.innerHTML = '';
+        dashList.innerHTML = '';
+
+        let dashTracks = 0, dashClocks = 0;
+
+        masterTrackers.forEach(t => {
+            // Render in Modal
+            const tDiv = document.createElement('div');
+            tDiv.style.cssText = "background: #161922; padding: 10px; border: 1px solid #454d5d; border-radius: 4px; display: flex; flex-direction: column; gap: 5px;";
+            
+            let valControl = t.type === 'track' ? 
+                `<input type="number" class="term-input" style="width: 60px; padding: 5px;" value="${t.val}" min="0" max="40" onchange="updateTracker(${t.id}, 'val', parseInt(this.value))"> <span style="color:#aab; font-size: 0.7rem;">/ 40</span>` :
+                `<input type="number" class="term-input" style="width: 60px; padding: 5px;" value="${t.val}" min="0" onchange="updateTracker(${t.id}, 'val', parseInt(this.value))"> <span style="color:#aab; font-size: 0.7rem;">/</span> 
+                 <select class="term-input" style="width: 60px; padding: 5px;" onchange="updateTracker(${t.id}, 'max', parseInt(this.value))">
+                    <option value="4" ${t.max === 4 ? 'selected' : ''}>4</option>
+                    <option value="6" ${t.max === 6 ? 'selected' : ''}>6</option>
+                    <option value="8" ${t.max === 8 ? 'selected' : ''}>8</option>
+                    <option value="10" ${t.max === 10 ? 'selected' : ''}>10</option>
+                 </select>`;
+
+            tDiv.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:0.6rem; color:#3b82f6; text-transform:uppercase;">${t.type}</span>
+                    <span style="font-size:0.6rem; color:#ff0055; cursor:pointer;" onclick="deleteTracker(${t.id})">[DELETE]</span>
+                </div>
+                <input type="text" class="term-input" value="${t.name}" onchange="updateTracker(${t.id}, 'name', this.value)">
+                <div style="display:flex; align-items:center; gap: 10px;">
+                    ${valControl}
+                    <label style="font-size: 0.7rem; color: #aab; margin-left: auto; display:flex; align-items:center; gap: 5px;">
+                        <input type="checkbox" ${t.dashboard ? 'checked' : ''} onchange="updateTracker(${t.id}, 'dashboard', this.checked)"> Pin to Dash
+                    </label>
+                </div>
+            `;
+            modalList.appendChild(tDiv);
+
+            // Render on Dashboard (if pinned)
+            if (t.dashboard) {
+                const dDiv = document.createElement('div');
+                dDiv.style.cssText = "display: flex; gap: 10px; background: #161922; padding: 10px; border: 1px solid #454d5d; border-radius: 4px; align-items: center;";
+                
+                let dControl = t.type === 'track' ?
+                    `<input type="number" class="term-input" style="width: 70px; text-align: center;" value="${t.val}" min="0" max="40" onchange="updateTracker(${t.id}, 'val', parseInt(this.value))">` :
+                    `<input type="number" class="term-input" style="width: 60px; text-align: center;" value="${t.val}" min="0" max="${t.max}" onchange="updateTracker(${t.id}, 'val', parseInt(this.value))"> <span style="color:#aab;">/ ${t.max}</span>`;
+
+                dDiv.innerHTML = `
+                    <div style="font-size: 0.6rem; color: #3b82f6; width: 40px;">${t.type.toUpperCase()}</div>
+                    <input type="text" class="term-input" style="flex-grow: 1; border: none; background: transparent;" value="${t.name}" onchange="updateTracker(${t.id}, 'name', this.value)">
+                    ${dControl}
+                `;
+                dashList.appendChild(dDiv);
+            }
+        });
+
+        if (dashList.innerHTML === '') dashList.innerHTML = '<div style="font-size: 0.7rem; color: #454d5d; font-style: italic;">No active trackers pinned.</div>';
+    }
+
+    // --- DICE ENGINE ---
     async function tempNeuralRoll(val) {
         const d1 = Math.floor(Math.random() * 10) + 1;
         const d2 = Math.floor(Math.random() * 10) + 1;
         const actionDie = Math.floor(Math.random() * 6) + 1;
-        
         let actionScore = actionDie + val;
         if (actionScore > 10) actionScore = 10; 
         
@@ -373,54 +500,43 @@
         if (actionScore > d1) hits++;
         if (actionScore > d2) hits++;
         
-        const isMatch = (d1 === d2);
-        
-        let result = "";
-        if (hits === 2) result = "STRONG HIT";
-        else if (hits === 1) result = "WEAK HIT";
-        else result = "MISS";
-        
-        if (isMatch) result += " + MATCH!";
-        
+        let result = hits === 2 ? "STRONG HIT" : hits === 1 ? "WEAK HIT" : "MISS";
+        if (d1 === d2) result += " + MATCH!";
         return { result, actionDie, actionScore, d1, d2 };
     }
 
-    async function triggerMoveRoll(statName) {
+    window.triggerMoveRoll = async function(statName) {
         const val = parseInt(window.activeCharData[statName.toLowerCase()] || 0);
         const overlay = document.getElementById('roll-overlay');
         overlay.style.display = 'block';
         document.getElementById('roll-res').innerText = "CALCULATING...";
-        
         try {
             const roll = await tempNeuralRoll(val);
             document.getElementById('roll-res').innerText = roll.result;
             document.getElementById('roll-res').style.color = roll.result.includes("MISS") ? "#ff0055" : "#00ff9d";
             document.getElementById('roll-details').innerText = `${statName} (+${val}) vs Challenge(${roll.d1}, ${roll.d2})`;
 
-            const logMsg = `[STAT ROLL: ${statName.toUpperCase()}]\nAction Die: ${roll.actionDie} + ${val} = ${roll.actionScore}\nChallenge Dice: [${roll.d1}] and [${roll.d2}]\nResult: **${roll.result}**`;
-            if (window.gLink && typeof window.gLink.logServer === 'function') await window.gLink.logServer(window.charId, logMsg);
-        } catch (e) {
-            document.getElementById('roll-res').innerText = "ROLL ERROR";
-        }
-    }
+            if (window.gLink && typeof window.gLink.logServer === 'function') {
+                await window.gLink.logServer(window.charId, `[STAT ROLL: ${statName.toUpperCase()}]\nAction Die: ${roll.actionDie} + ${val} = ${roll.actionScore}\nChallenge Dice: [${roll.d1}] and [${roll.d2}]\nResult: **${roll.result}**`);
+            }
+        } catch (e) { document.getElementById('roll-res').innerText = "ROLL ERROR"; }
+    };
 
     window.executeActionRoll = async function() {
         const mod = parseInt(document.getElementById('dice-modifier').value) || 0;
         const overlay = document.getElementById('roll-overlay');
         overlay.style.display = 'block';
         document.getElementById('roll-res').innerText = "CALCULATING...";
-
         try {
             const roll = await tempNeuralRoll(mod);
             document.getElementById('roll-res').innerText = roll.result;
             document.getElementById('roll-res').style.color = roll.result.includes("MISS") ? "#ff0055" : "#3b82f6";
             document.getElementById('roll-details').innerText = `Action: ${roll.actionScore} vs Challenge(${roll.d1}, ${roll.d2})`;
 
-            const logMsg = `[ACTION ROLL]\nAction Die: ${roll.actionDie} + ${mod} = ${roll.actionScore}\nChallenge Dice: [${roll.d1}] and [${roll.d2}]\nResult: **${roll.result}**`;
-            if (window.gLink && typeof window.gLink.logServer === 'function') await window.gLink.logServer(window.charId, logMsg);
-        } catch(e) {
-            document.getElementById('roll-res').innerText = "ROLL ERROR";
-        }
+            if (window.gLink && typeof window.gLink.logServer === 'function') {
+                await window.gLink.logServer(window.charId, `[ACTION ROLL]\nAction Die: ${roll.actionDie} + ${mod} = ${roll.actionScore}\nChallenge Dice: [${roll.d1}] and [${roll.d2}]\nResult: **${roll.result}**`);
+            }
+        } catch(e) { document.getElementById('roll-res').innerText = "ROLL ERROR"; }
     };
 
     window.executeD100Roll = async function() {
@@ -431,8 +547,9 @@
         document.getElementById('roll-res').style.color = "#3b82f6";
         document.getElementById('roll-details').innerText = `Percentile d100 Roll`;
 
-        const logMsg = `[PERCENTILE ROLL]\nResult: **${roll}**`;
-        if (window.gLink && typeof window.gLink.logServer === 'function') await window.gLink.logServer(window.charId, logMsg);
+        if (window.gLink && typeof window.gLink.logServer === 'function') {
+            await window.gLink.logServer(window.charId, `[PERCENTILE ROLL]\nResult: **${roll}**`);
+        }
     };
 
     setTimeout(initSheet, 100);
