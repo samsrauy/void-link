@@ -95,10 +95,16 @@
             <button class="action-btn" style="background:#161922; color:#bcdee7; border: 1px solid #454d5d;" onclick="executeD100Roll()">d100</button>
         </div>
 
-        <div style="flex: 1; background: #1a1c23; border: 1px solid #454d5d; padding: 10px; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <button class="burn-btn" onclick="burnMomentum()">MOMENTUM</button>
-            <input type="number" id="v-momentum" class="term-input" style="width: 45px; height: 32px; text-align: center; font-size: 1.1rem; font-weight: bold; padding: 0;" onchange="saveField('momentum', this.value)">
-            <button class="action-btn" id="btn-mom-reset" style="background:#161922; color:#fff; border: 1px solid #454d5d; min-width: 60px; font-size: 0.7rem;" onclick="resetMomentum()">R 2/10</button>
+        <div style="flex: 1; background: #1a1c23; border: 1px solid #454d5d; padding: 10px; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+                <button class="burn-btn" onclick="burnMomentum()">MOMENTUM</button>
+                <input type="number" id="v-momentum" class="term-input" style="width: 45px; height: 32px; text-align: center; font-size: 1.1rem; font-weight: bold; padding: 0;" onchange="saveMomentum(this.value)">
+                <button class="action-btn" id="btn-mom-reset" style="background:#161922; color:#fff; border: 1px solid #454d5d; min-width: 60px; font-size: 0.7rem;" onclick="resetMomentum()">R 2/10</button>
+            </div>
+            <div style="display: flex; justify-content: center; gap: 10px; font-size: 0.65rem; width: 100%;">
+                <label style="color: #aab; display: flex; align-items: center; gap: 4px;">OVR RESET: <input type="number" id="ovr-reset" class="term-input" style="width: 35px; height: 20px; padding: 0; text-align: center; font-size: 0.65rem;" placeholder="-" onchange="saveField('mom_reset_ovr', this.value); recalcMomentum();"></label>
+                <label style="color: #aab; display: flex; align-items: center; gap: 4px;">OVR MAX: <input type="number" id="ovr-max" class="term-input" style="width: 35px; height: 20px; padding: 0; text-align: center; font-size: 0.65rem;" placeholder="-" onchange="saveField('mom_max_ovr', this.value); recalcMomentum();"></label>
+            </div>
         </div>
     </div>
 
@@ -177,6 +183,8 @@
             });
 
             document.getElementById('v-momentum').value = parseInt(window.activeCharData.momentum ?? 2);
+            document.getElementById('ovr-reset').value = window.activeCharData.mom_reset_ovr || "";
+            document.getElementById('ovr-max').value = window.activeCharData.mom_max_ovr || "";
 
             document.getElementById('tracks-container').innerHTML = '';
             renderResource('health', 0, 5, parseInt(window.activeCharData.health ?? 5), 'tracks-container', [{id: 'wounded', label: 'WOUNDED'}, {id: 'battered', label: 'BATTERED'}]);
@@ -335,20 +343,87 @@
         if (dashList.innerHTML === '') dashList.innerHTML = '<div style="font-size: 0.7rem; color: #454d5d; font-style: italic;">No active trackers pinned.</div>';
     }
 
-    // Drawer, Resources & Rolls below
+    // Drawer, Resources & Momentum Logic
     function toggleDrawer() {
         const drawer = document.getElementById('impact-drawer');
         drawer.classList.toggle('open');
         document.getElementById('drawer-icon').innerText = drawer.classList.contains('open') ? "[-] IMPACT DEBILITIES" : "[+] IMPACT DEBILITIES";
     }
-    window.toggleImpact = function(id, is) { saveField('i_' + id, is); document.getElementById('tag-' + id).classList.toggle('active', is); recalcMomentum(); };
+    
+    window.toggleImpact = function(id, is) { 
+        saveField('i_' + id, is); 
+        document.getElementById('tag-' + id).classList.toggle('active', is); 
+        recalcMomentum(); 
+    };
+
+    window.saveMomentum = function(val) {
+        let parsed = parseInt(val) || 0;
+        let maxText = document.getElementById('btn-mom-reset').innerText.split('/')[1];
+        let max = parseInt(maxText) || 10;
+        
+        if (parsed > max) parsed = max;
+        if (parsed < -6) {
+            parsed = -6;
+            alert("CRITICAL WARNING: Momentum at -6. Must apply cost to Health, Spirit, or Supply.");
+        }
+        
+        document.getElementById('v-momentum').value = parsed;
+        saveField('momentum', parsed);
+    };
+
     function recalcMomentum() {
-        let cnt = 0; ['wounded', 'shaken', 'unprepared', 'battered', 'cursed'].forEach(i => { if(document.getElementById('i-'+i).checked) cnt++; });
-        document.getElementById('impact-counter').innerText = `${cnt} ACTIVE`; document.getElementById('impact-counter').style.color = cnt > 0 ? "#ff0055" : "#fff";
-        const max = 10 - cnt; document.getElementById('btn-mom-reset').innerText = `R ${cnt === 1 ? 1 : cnt >= 2 ? 0 : 2}/${max}`;
+        let cnt = 0; 
+        ['wounded', 'shaken', 'unprepared', 'battered', 'cursed'].forEach(i => { 
+            if(document.getElementById('i-'+i).checked) cnt++; 
+        });
+        
+        document.getElementById('impact-counter').innerText = `${cnt} ACTIVE`; 
+        document.getElementById('impact-counter').style.color = cnt > 0 ? "#ff0055" : "#fff";
+        
+        // System defaults based on rules
+        let calcMax = 10 - cnt;
+        let calcReset = cnt === 0 ? 2 : (cnt === 1 ? 1 : 0);
+        
+        // Manual Overrides
+        let ovrReset = document.getElementById('ovr-reset').value;
+        let ovrMax = document.getElementById('ovr-max').value;
+        
+        let finalReset = (ovrReset !== "" && !isNaN(ovrReset)) ? parseInt(ovrReset) : calcReset;
+        let finalMax = (ovrMax !== "" && !isNaN(ovrMax)) ? parseInt(ovrMax) : calcMax;
+        
+        document.getElementById('btn-mom-reset').innerText = `R ${finalReset}/${finalMax}`;
+        
+        // Clamp current if it exceeds new max
+        let currentMom = parseInt(document.getElementById('v-momentum').value || 2);
+        if (currentMom > finalMax) {
+            saveMomentum(finalMax);
+        }
     }
-    window.burnMomentum = () => { const reset = parseInt(document.getElementById('btn-mom-reset').innerText.split(' ')[1].split('/')[0]); document.getElementById('v-momentum').value = reset; saveField('momentum', reset); };
-    window.resetMomentum = () => burnMomentum();
+
+    window.burnMomentum = async () => { 
+        let currentMom = parseInt(document.getElementById('v-momentum').value || 2);
+        if (currentMom <= 0) {
+            alert("DENIED: You must have positive momentum to burn it.");
+            return;
+        }
+        
+        const resetText = document.getElementById('btn-mom-reset').innerText;
+        const resetVal = parseInt(resetText.replace('R ', '').split('/')[0]); 
+        
+        saveMomentum(resetVal); 
+        
+        if (window.gLink && typeof window.gLink.logServer === 'function') {
+            await window.gLink.logServer(window.charId, `[BURNED MOMENTUM] Replaced action score with +${currentMom}. Resetting meter to +${resetVal}.`);
+        }
+        alert(`Momentum Burned! Action score acts as +${currentMom}. Momentum reset to +${resetVal}.`);
+    };
+
+    window.resetMomentum = () => {
+        const resetText = document.getElementById('btn-mom-reset').innerText;
+        const resetVal = parseInt(resetText.replace('R ', '').split('/')[0]); 
+        saveMomentum(resetVal);
+    };
+
     function renderResource(n, min, max, cur, cid, warns = []) {
         const wrapper = document.createElement('div'); wrapper.className = 'track-wrapper';
         wrapper.innerHTML = `<span class="track-label">${n.toUpperCase()} ${warns.map(w => `<span id="tag-${w.id}" class="warn-tag">[${w.label}]</span>`).join('')}</span><div class="track-dots" id="dots-${n}"></div>`;
@@ -359,25 +434,57 @@
             wrapper.querySelector('.track-dots').appendChild(dot);
         }
     }
+    
     window.openTrackerModal = () => document.getElementById('tracker-panel').classList.add('open');
     window.closeTrackerModal = () => document.getElementById('tracker-panel').classList.remove('open');
 
+    // Dice Engine
     async function tempNeuralRoll(val) {
-        const d1 = Math.floor(Math.random()*10)+1, d2 = Math.floor(Math.random()*10)+1, ad = Math.floor(Math.random()*6)+1;
+        const d1 = Math.floor(Math.random()*10)+1, d2 = Math.floor(Math.random()*10)+1;
+        let ad = Math.floor(Math.random()*6)+1;
+        
+        // NEGATIVE MOMENTUM RULE
+        const currentMom = parseInt(document.getElementById('v-momentum').value || 2);
+        if (currentMom < 0 && ad === Math.abs(currentMom)) {
+            ad = 0; // Canceled
+            if (window.gLink && typeof window.gLink.logServer === 'function') {
+                window.gLink.logServer(window.charId, `[SYSTEM ALERT] Negative Momentum triggered. Action die canceled.`);
+            }
+        }
+
         let s = Math.min(ad + val, 10), hits = (s>d1?1:0) + (s>d2?1:0);
         return { result: hits === 2 ? "STRONG HIT" : hits === 1 ? "WEAK HIT" : "MISS", ad, s, d1, d2 };
     }
+
     window.triggerMoveRoll = async function(statName) {
         if(activeStatEdit) return; // Prevent roll if editing
         const val = parseInt(window.activeCharData[statName.toLowerCase()] || 0);
         document.getElementById('roll-overlay').style.display = 'block'; document.getElementById('roll-res').innerText = "CALCULATING...";
-        try { const r = await tempNeuralRoll(val); document.getElementById('roll-res').innerText = r.result; document.getElementById('roll-res').style.color = r.result.includes("MISS") ? "#ff0055" : "#00ff9d"; document.getElementById('roll-details').innerText = `${statName} (+${val}) vs Challenge(${r.d1}, ${r.d2})`; } catch (e) {}
+        try { 
+            const r = await tempNeuralRoll(val); 
+            document.getElementById('roll-res').innerText = r.result; 
+            document.getElementById('roll-res').style.color = r.result.includes("MISS") ? "#ff0055" : "#00ff9d"; 
+            
+            let details = `${statName} (+${val}) vs Challenge(${r.d1}, ${r.d2})`;
+            if (r.ad === 0) details += " [CANCELED BY NEG MOMENTUM]";
+            document.getElementById('roll-details').innerText = details; 
+        } catch (e) {}
     };
+
     window.executeActionRoll = async function() {
         const mod = parseInt(document.getElementById('dice-modifier').value) || 0;
         document.getElementById('roll-overlay').style.display = 'block'; document.getElementById('roll-res').innerText = "CALCULATING...";
-        try { const r = await tempNeuralRoll(mod); document.getElementById('roll-res').innerText = r.result; document.getElementById('roll-res').style.color = r.result.includes("MISS") ? "#ff0055" : "#3b82f6"; document.getElementById('roll-details').innerText = `Action: ${r.s} vs Challenge(${r.d1}, ${r.d2})`; } catch(e) {}
+        try { 
+            const r = await tempNeuralRoll(mod); 
+            document.getElementById('roll-res').innerText = r.result; 
+            document.getElementById('roll-res').style.color = r.result.includes("MISS") ? "#ff0055" : "#3b82f6"; 
+            
+            let details = `Action: ${r.s} vs Challenge(${r.d1}, ${r.d2})`;
+            if (r.ad === 0) details += " [CANCELED BY NEG MOMENTUM]";
+            document.getElementById('roll-details').innerText = details; 
+        } catch(e) {}
     };
+
     window.executeD100Roll = async function() {
         document.getElementById('roll-overlay').style.display = 'block'; document.getElementById('roll-res').innerText = `ROLLED: ${Math.floor(Math.random()*100)+1}`; document.getElementById('roll-res').style.color = "#3b82f6"; document.getElementById('roll-details').innerText = `Percentile d100 Roll`;
     };
