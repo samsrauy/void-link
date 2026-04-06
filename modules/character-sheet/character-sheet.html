@@ -9,377 +9,361 @@
 
     /* Stats Grid */
     .stat-grid { display: flex; justify-content: space-between; gap: 5px; flex-wrap: wrap; margin-bottom: 15px; }
-    .stat-box { flex: 1; min-width: 50px; background: #161922; border: 1px solid #454d5d; padding: 12px 4px; text-align: center; border-radius: 4px; transition: 0.2s; display: flex; flex-direction: column; align-items: center; }
-    .stat-box:hover { border-color: #00ff9d; background: rgba(0,255,153,0.05); }
-    .stat-val { font-size: 1.8rem; font-weight: bold; color: #bcdee7; cursor: pointer; padding: 5px 15px; line-height: 1; user-select: none; }
-    .stat-val:hover { color: #fff; text-shadow: 0 0 8px rgba(188,222,231,0.5); }
-    .stat-label { font-size: 0.55rem; text-transform: uppercase; opacity: 0.6; margin-bottom: 2px; }
-    .tiny-btn { background: #0b0d12; border: 1px solid #454d5d; color: #aab; cursor: pointer; padding: 4px 8px; font-weight: bold; border-radius: 2px; font-size: 0.8rem; display: flex; align-items: center; justify-content: center; }
-    .tiny-btn:hover { background: #00ff9d; color: #000; border-color: #00ff9d; }
-
-    /* Resource Tracks */
-    .track-wrapper { background: #161922; padding: 8px 12px; margin-bottom: 5px; border-radius: 4px; border: 1px solid #454d5d; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;}
-    .track-label { font-size: 0.75rem; font-weight: bold; width: 140px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
-    .track-dots { display: flex; gap: 3px; flex-wrap: wrap; }
-    .dot { width: 12px; height: 12px; border: 1px solid #454d5d; cursor: pointer; transition: 0.2s; }
-    .dot:hover { border-color: #00ff9d; }
-    .dot.active { background: #00ff9d; box-shadow: 0 0 6px rgba(0, 255, 153, 0.5); border-color: #00ff9d; }
-    .warn-tag { display: none; background: #ff005522; color: #ff0055; border: 1px solid #ff0055; font-size: 0.5rem; padding: 2px 4px; border-radius: 2px; font-family: 'Share Tech Mono'; letter-spacing: 1px; }
-    .warn-tag.active { display: inline-block; }
-
-    /* Impacts Drawer */
-    .drawer-btn { background: #1a1c23; border: 1px dashed #454d5d; color: #ff0055; padding: 8px 12px; width: 100%; text-align: left; cursor: pointer; font-family: 'Share Tech Mono'; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; border-radius: 4px; margin-bottom: 5px; box-sizing: border-box; font-size: 0.8rem; }
-    .drawer-btn:hover { background: #ff005511; border-color: #ff0055; }
-    .drawer-content { display: none; background: #0b0d12; border: 1px dashed #454d5d; border-top: none; padding: 12px; flex-wrap: wrap; gap: 15px; margin-bottom: 15px; border-radius: 0 0 4px 4px; box-sizing: border-box; }
-    .drawer-content.open { display: flex; }
-    .impact-label { color: #aab; font-size: 0.7rem; display: flex; align-items: center; gap: 6px; cursor: pointer; font-family: 'Share Tech Mono'; transition: 0.2s;}
-    .impact-label:hover { color: #fff; }
-    .impact-label input { cursor: pointer; accent-color: #ff0055; width: 12px; height: 12px; margin: 0; }
-
-    /* Action & UI Controls */
-    .action-btn { height: 32px; background: #3b82f6; color: #000; border: none; padding: 0 12px; font-family: 'Share Tech Mono'; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap; border-radius: 3px; font-size: 0.8rem;}
-    .action-btn:hover { background: #60a5fa; }
-    .burn-btn { height: 32px; background: #ff0055; color: #fff; border: none; padding: 0 12px; font-family: 'Share Tech Mono'; font-weight: bold; cursor: pointer; border-radius: 3px; transition: 0.2s; white-space: nowrap; font-size: 0.8rem; }
-    .burn-btn:hover { background: #ff3377; box-shadow: 0 0 10px rgba(255,0,85,0.4); }
-
-    /* Tracker Side Panel & Stat Modals */
-    #tracker-panel { position: absolute; top: 0; right: -100%; width: 100%; max-width: 450px; height: 100%; background: #0b0d12; border-left: 2px solid #3b82f6; transition: right 0.3s ease-in-out; z-index: 50; padding: 15px; box-sizing: border-box; overflow-y: auto; box-shadow: -5px 0 20px rgba(0,0,0,0.8); display: flex; flex-direction: column; }
-    #tracker-panel.open { right: 0; }
-    #modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:90; }
-    #stat-editor { display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); background:#0b0d12; border: 2px solid #3b82f6; padding:20px; z-index:100; border-radius:8px; text-align:center; box-shadow: 0 0 30px rgba(0,0,0,0.8); width: 200px; }
+    .stat-box { flex: 1; min-width: 50px; background: #161922; border: 1px solid #454d5d; padding: 10px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; transition: 0.2s; }
+    .stat-label { font-size: 0.6rem; color: #454d5d; margin-bottom: 5px; letter-spacing: 1px; pointer-events: none; }
+    .stat-val { font-size: 1.5rem; color: #bcdee7; font-weight: bold; pointer-events: none; }
+    
+    .clickable { cursor: pointer; }
+    .clickable:hover { border-color: #00ff9d; background: rgba(0, 255, 157, 0.05); }
+    .clickable:active { background: rgba(0, 255, 157, 0.2); }
 
     /* Roll Overlay */
-    #roll-overlay { background: #000; border: 1px solid #00ff9d; padding: 12px; margin-top: 15px; display: none; box-shadow: inset 0 0 15px rgba(0, 255, 153, 0.1); }
-    .roll-close { float: right; cursor: pointer; color: #454d5d; font-size: 0.7rem; font-weight: bold; }
+    #roll-overlay { display: none; margin-top: 15px; background: #161922; border: 1px solid #00ff9d; padding: 15px; text-align: center; }
+    #roll-res { font-size: 1.5rem; font-weight: bold; margin-bottom: 5px; }
+    #roll-details { font-size: 0.8rem; color: #bcdee7; }
 </style>
 
 <div id="sheet-container">
-    <div id="char-sheet-display" style="font-size: 1rem; letter-spacing: 4px; margin-bottom: 15px; color: #bcdee7; font-weight: bold;">UPLINKING...</div>
-
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
-        <input type="text" id="f-name" class="term-input" placeholder="CALLSIGN / NAME" onchange="saveField('name', this.value)">
-        <input type="text" id="f-pronouns" class="term-input" placeholder="PRONOUNS" onchange="saveField('pronouns', this.value)">
-        <input type="text" id="f-background" class="term-input" placeholder="BACKGROUND" style="grid-column: span 2;" onchange="saveField('background', this.value)">
-    </div>
-
-    <div class="section-title">CORE ATTRIBUTES</div>
-    <div style="font-size: 0.55rem; color: #aab; margin-bottom: 5px;">[CLICK TO ROLL] — [HOLD OR RIGHT-CLICK TO EDIT]</div>
+    
+    <div class="section-title">CORE STATS</div>
     <div class="stat-grid">
-        <div class="stat-box">
-            <span class="stat-label">Edge</span>
-            <span id="v-edge" class="stat-val" onclick="triggerMoveRoll('Edge')" oncontextmenu="openStatEditor('edge'); return false;" ontouchstart="startStatPress('edge')" ontouchend="cancelStatPress()" ontouchmove="cancelStatPress()">0</span>
+        <div class="stat-box clickable" id="box-edge" oncontextmenu="updateStatValue('edge', -1, event)" onmousedown="startPress('edge', 1)" ontouchstart="startPress('edge', 1)" onmouseup="endPress('Edge')" ontouchend="endPress('Edge')" onmouseleave="cancelPress()">
+            <div class="stat-label">EDGE</div>
+            <div class="stat-val" id="stat-edge">1</div>
         </div>
-        <div class="stat-box">
-            <span class="stat-label">Heart</span>
-            <span id="v-heart" class="stat-val" onclick="triggerMoveRoll('Heart')" oncontextmenu="openStatEditor('heart'); return false;" ontouchstart="startStatPress('heart')" ontouchend="cancelStatPress()" ontouchmove="cancelStatPress()">0</span>
+        <div class="stat-box clickable" id="box-heart" oncontextmenu="updateStatValue('heart', -1, event)" onmousedown="startPress('heart', 1)" ontouchstart="startPress('heart', 1)" onmouseup="endPress('Heart')" ontouchend="endPress('Heart')" onmouseleave="cancelPress()">
+            <div class="stat-label">HEART</div>
+            <div class="stat-val" id="stat-heart">1</div>
         </div>
-        <div class="stat-box">
-            <span class="stat-label">Iron</span>
-            <span id="v-iron" class="stat-val" onclick="triggerMoveRoll('Iron')" oncontextmenu="openStatEditor('iron'); return false;" ontouchstart="startStatPress('iron')" ontouchend="cancelStatPress()" ontouchmove="cancelStatPress()">0</span>
+        <div class="stat-box clickable" id="box-iron" oncontextmenu="updateStatValue('iron', -1, event)" onmousedown="startPress('iron', 1)" ontouchstart="startPress('iron', 1)" onmouseup="endPress('Iron')" ontouchend="endPress('Iron')" onmouseleave="cancelPress()">
+            <div class="stat-label">IRON</div>
+            <div class="stat-val" id="stat-iron">1</div>
         </div>
-        <div class="stat-box">
-            <span class="stat-label">Shadow</span>
-            <span id="v-shadow" class="stat-val" onclick="triggerMoveRoll('Shadow')" oncontextmenu="openStatEditor('shadow'); return false;" ontouchstart="startStatPress('shadow')" ontouchend="cancelStatPress()" ontouchmove="cancelStatPress()">0</span>
+        <div class="stat-box clickable" id="box-shadow" oncontextmenu="updateStatValue('shadow', -1, event)" onmousedown="startPress('shadow', 1)" ontouchstart="startPress('shadow', 1)" onmouseup="endPress('Shadow')" ontouchend="endPress('Shadow')" onmouseleave="cancelPress()">
+            <div class="stat-label">SHADOW</div>
+            <div class="stat-val" id="stat-shadow">1</div>
         </div>
-        <div class="stat-box">
-            <span class="stat-label">Wits</span>
-            <span id="v-wits" class="stat-val" onclick="triggerMoveRoll('Wits')" oncontextmenu="openStatEditor('wits'); return false;" ontouchstart="startStatPress('wits')" ontouchend="cancelStatPress()" ontouchmove="cancelStatPress()">0</span>
-        </div>
-    </div>
-
-    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px;">
-        <div style="flex: 1; background: #1a1c23; border: 1px solid #454d5d; padding: 10px; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <label style="font-size: 0.6rem; color: #aab; font-weight: bold;">ADDS</label>
-            <input type="number" id="dice-modifier" value="0" style="width: 45px; height: 32px; background: #0b0d12; border: 1px solid #454d5d; color: #fff; text-align: center; font-size: 1rem; font-family: 'Share Tech Mono';">
-            <button class="action-btn" onclick="executeActionRoll()">ROLL</button>
-            <button class="action-btn" style="background:#161922; color:#bcdee7; border: 1px solid #454d5d;" onclick="executeD100Roll()">d100</button>
-        </div>
-
-        <div style="flex: 1; background: #1a1c23; border: 1px solid #454d5d; padding: 10px; border-radius: 4px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <button class="burn-btn" onclick="burnMomentum()">MOMENTUM</button>
-            <input type="number" id="v-momentum" class="term-input" style="width: 45px; height: 32px; text-align: center; font-size: 1.1rem; font-weight: bold; padding: 0;" onchange="saveField('momentum', this.value)">
-            <button class="action-btn" id="btn-mom-reset" style="background:#161922; color:#fff; border: 1px solid #454d5d; min-width: 60px; font-size: 0.7rem;" onclick="resetMomentum()">R 2/10</button>
+        <div class="stat-box clickable" id="box-wits" oncontextmenu="updateStatValue('wits', -1, event)" onmousedown="startPress('wits', 1)" ontouchstart="startPress('wits', 1)" onmouseup="endPress('Wits')" ontouchend="endPress('Wits')" onmouseleave="cancelPress()">
+            <div class="stat-label">WITS</div>
+            <div class="stat-val" id="stat-wits">1</div>
         </div>
     </div>
 
-    <button class="drawer-btn" onclick="toggleDrawer()">
-        <span id="drawer-icon">[+] IMPACT SYSTEM DEBILITIES</span>
-        <span id="impact-counter" style="color: #fff; font-size: 0.65rem;">0 ACTIVE</span>
-    </button>
-    <div id="impact-drawer" class="drawer-content">
-        <label class="impact-label"><input type="checkbox" id="i-wounded" onchange="toggleImpact('wounded', this.checked)"> WOUNDED</label>
-        <label class="impact-label"><input type="checkbox" id="i-battered" onchange="toggleImpact('battered', this.checked)"> BATTERED</label>
-        <label class="impact-label"><input type="checkbox" id="i-shaken" onchange="toggleImpact('shaken', this.checked)"> SHAKEN</label>
-        <label class="impact-label"><input type="checkbox" id="i-cursed" onchange="toggleImpact('cursed', this.checked)"> CURSED</label>
-        <label class="impact-label"><input type="checkbox" id="i-unprepared" onchange="toggleImpact('unprepared', this.checked)"> UNPREPARED</label>
+    <div class="section-title">CONDITION METERS</div>
+    <div class="stat-grid">
+        <div class="stat-box clickable" id="box-health" oncontextmenu="updateStatValue('health', -1, event)" onmousedown="startPress('health', 1)" ontouchstart="startPress('health', 1)" onmouseup="endPress()" ontouchend="endPress()" onmouseleave="cancelPress()">
+            <div class="stat-label">HEALTH</div>
+            <div class="stat-val" id="stat-health">5</div>
+        </div>
+        <div class="stat-box clickable" id="box-spirit" oncontextmenu="updateStatValue('spirit', -1, event)" onmousedown="startPress('spirit', 1)" ontouchstart="startPress('spirit', 1)" onmouseup="endPress()" ontouchend="endPress()" onmouseleave="cancelPress()">
+            <div class="stat-label">SPIRIT</div>
+            <div class="stat-val" id="stat-spirit">5</div>
+        </div>
+        <div class="stat-box clickable" id="box-supply" oncontextmenu="updateStatValue('supply', -1, event)" onmousedown="startPress('supply', 1)" ontouchstart="startPress('supply', 1)" onmouseup="endPress()" ontouchend="endPress()" onmouseleave="cancelPress()">
+            <div class="stat-label">SUPPLY</div>
+            <div class="stat-val" id="stat-supply">5</div>
+        </div>
     </div>
 
-    <div class="section-title" style="margin-top: 10px;">CONDITION TRACKS</div>
-    <div id="tracks-container"></div>
+    <div class="section-title">MOMENTUM STATUS</div>
+    <div class="stat-grid" id="momentum-grid">
+        <div class="stat-box" style="flex: 2; border-color: #00ff9d; cursor: default;">
+            <div class="stat-label" style="color: #00ff9d;">CURRENT MOMENTUM</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0;">
+                <button onclick="changeMomentum(-1)" class="term-input" style="width: 40px; text-align: center; font-size: 1.2rem; cursor: pointer;">-</button>
+                <span id="mom-current" style="font-size: 2rem; color: #00ff9d; font-weight: bold;">2</span>
+                <button onclick="changeMomentum(1)" class="term-input" style="width: 40px; text-align: center; font-size: 1.2rem; cursor: pointer;">+</button>
+            </div>
+            <button onclick="executeBurnMomentum()" class="term-input" style="background: rgba(255, 0, 85, 0.1); border-color: #ff0055; color: #ff0055; cursor: pointer; font-weight: bold; margin-top: 5px;">
+                BURN MOMENTUM
+            </button>
+        </div>
 
-    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin: 20px 0 10px 0; border-bottom: 1px solid #1a1c23; padding-bottom: 5px;">
-        <div style="font-size: 0.7rem; letter-spacing: 3px; color: #454d5d; text-transform: uppercase;">ACTIVE TRACKS, VOWS & CLOCKS</div>
-        <button class="action-btn" style="height: 22px; padding: 0 8px; font-size: 0.65rem; border-radius: 2px;" onclick="openTrackerModal()">[ MANAGE ]</button>
+        <div style="flex: 3; display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+            <div class="stat-box" style="cursor: default;">
+                <div class="stat-label">IMPACTS</div>
+                <input type="number" id="mom-impacts" class="term-input" value="0" min="0" onchange="updateMomImpacts(this.value)" style="text-align: center;">
+            </div>
+            <div class="stat-box" style="opacity: 0.5; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #454d5d; border-style: dashed; cursor: default;">
+                SYSTEM ALIGNED
+            </div>
+            <div class="stat-box" style="cursor: default;">
+                <div class="stat-label">RESET (OVR)</div>
+                <input type="number" id="mom-reset-ovr" class="term-input" placeholder="Auto" onchange="updateMomOverride('reset', this.value)" style="text-align: center;">
+            </div>
+            <div class="stat-box" style="cursor: default;">
+                <div class="stat-label">MAX (OVR)</div>
+                <input type="number" id="mom-max-ovr" class="term-input" placeholder="Auto" onchange="updateMomOverride('max', this.value)" style="text-align: center;">
+            </div>
+        </div>
     </div>
-    <div id="dashboard-trackers" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;"></div>
+
+    <div class="section-title">NEURAL UPLINK (ROLL)</div>
+    <div class="stat-grid">
+        <div class="stat-box" style="flex: 2;">
+            <div class="stat-label">STAT/MODIFIER VALUE</div>
+            <input type="number" id="dice-modifier" class="term-input" value="0" style="text-align: center; font-size: 1.5rem;">
+        </div>
+        <div class="stat-box" style="flex: 1; justify-content: center;">
+            <button onclick="executeActionRoll()" class="term-input" style="height: 100%; font-weight: bold; background: #00ff9d; color: #000; cursor: pointer;">
+                EXECUTE ACTION
+            </button>
+        </div>
+        <div class="stat-box" style="flex: 1; justify-content: center;">
+            <button onclick="executeD100Roll()" class="term-input" style="height: 100%; cursor: pointer;">
+                D100 ORACLE
+            </button>
+        </div>
+    </div>
 
     <div id="roll-overlay">
-        <span class="roll-close" onclick="this.parentElement.style.display='none'">[X]</span>
-        <div id="roll-res" style="font-size: 1.1rem; font-weight: bold;">RESULT</div>
-        <div id="roll-details" style="font-family: monospace; opacity: 0.7; margin-top: 5px; font-size: 0.8rem;">Dice details...</div>
+        <div id="roll-res">STANDBY</div>
+        <div id="roll-details">Awaiting input...</div>
     </div>
 
-    <div id="modal-overlay" onclick="closeStatEditor()"></div>
-    <div id="stat-editor">
-        <div id="stat-edit-title" style="color:#bcdee7; letter-spacing:2px; margin-bottom:15px; text-transform:uppercase; font-size:0.8rem;">EDIT STAT</div>
-        <div style="display:flex; justify-content:center; align-items:center; gap:15px;">
-            <button class="action-btn" onclick="adjEditingStat(-1)">-</button>
-            <span id="stat-edit-val" style="font-size:2rem; font-weight:bold; color:#00ff9d; width:40px; text-align:center;">0</span>
-            <button class="action-btn" onclick="adjEditingStat(1)">+</button>
-        </div>
-        <button class="action-btn" style="width:100%; margin-top:20px;" onclick="closeStatEditor()">CONFIRM</button>
-    </div>
-
-    <div id="tracker-panel">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid #454d5d; padding-bottom: 10px;">
-            <span style="font-size: 1rem; letter-spacing: 2px;">TRACKER REGISTRY</span>
-            <span style="cursor:pointer; color:#ff0055; font-weight:bold; font-size: 0.8rem;" onclick="closeTrackerModal()">[X] CLOSE</span>
-        </div>
-        <div style="display: flex; gap: 5px; margin-bottom: 15px;">
-            <button class="action-btn" style="flex: 1; padding: 0 5px;" onclick="addNewTracker('track')">+ TRACK</button>
-            <button class="action-btn" style="flex: 1; padding: 0 5px; background: #8b5cf6;" onclick="addNewTracker('vow')">+ VOW</button>
-            <button class="action-btn" style="flex: 1; padding: 0 5px; background: #161922; color: #bcdee7; border: 1px solid #454d5d;" onclick="addNewTracker('clock')">+ CLOCK</button>
-        </div>
-        <div id="modal-tracker-list" style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 30px;"></div>
-    </div>
 </div>
 
 <script>
-    let masterTrackers = []; 
-    let activeStatEdit = null;
-    let pressTimer = null; // For mobile long-press
-
-    async function initSheet() {
-        try {
-            if (window.dataswornReady) await window.dataswornReady;
-            const data = await window.gLink.loadStatsServer(window.charId);
-            window.activeCharData = data || {};
-            
-            document.getElementById('char-sheet-display').innerText = (window.activeCharData.name || window.charId).toUpperCase();
-            
-            ['edge','heart','iron','shadow','wits'].forEach(s => {
-                const el = document.getElementById(`v-${s}`);
-                if (el) el.innerText = window.activeCharData[s] || 0;
-            });
-
-            ['name', 'pronouns', 'background'].forEach(f => {
-                if(document.getElementById('f-'+f)) document.getElementById('f-'+f).value = window.activeCharData[f] || "";
-            });
-
-            document.getElementById('v-momentum').value = parseInt(window.activeCharData.momentum ?? 2);
-
-            document.getElementById('tracks-container').innerHTML = '';
-            renderResource('health', 0, 5, parseInt(window.activeCharData.health ?? 5), 'tracks-container', [{id: 'wounded', label: 'WOUNDED'}, {id: 'battered', label: 'BATTERED'}]);
-            renderResource('spirit', 0, 5, parseInt(window.activeCharData.spirit ?? 5), 'tracks-container', [{id: 'shaken', label: 'SHAKEN'}, {id: 'cursed', label: 'CURSED'}]);
-            renderResource('supply', 0, 5, parseInt(window.activeCharData.supply ?? 5), 'tracks-container', [{id: 'unprepared', label: 'UNPREPARED'}]);
-
-            ['wounded', 'battered', 'shaken', 'cursed', 'unprepared'].forEach(i => {
-                const isChecked = (window.activeCharData['i_'+i] === 'true' || window.activeCharData['i_'+i] === true);
-                const el = document.getElementById('i-'+i);
-                if(el) el.checked = isChecked;
-                const tagEl = document.getElementById('tag-'+i);
-                if(tagEl && isChecked) tagEl.classList.add('active');
-            });
-            recalcMomentum();
-
-            try { masterTrackers = JSON.parse(window.activeCharData.trackers_json || '[]'); } catch(e) { masterTrackers = []; }
-            renderTrackers();
-        } catch (err) {
-            console.error("Sheet Init Failure:", err);
-            document.getElementById('char-sheet-display').innerText = "LINK SEVERED";
-        }
-    }
-
-    function saveField(key, value) {
-        if (!window.activeCharData) window.activeCharData = {};
-        window.activeCharData[key] = value;
-        if (window.gLink) window.gLink.saveStatServer(window.charId, key, value);
-    }
-
-    // Modal Stat Editing Engine
-    window.startStatPress = function(stat) {
-        pressTimer = setTimeout(() => { openStatEditor(stat); }, 600);
-    };
-    window.cancelStatPress = function() {
-        clearTimeout(pressTimer);
-    };
-    
-    window.openStatEditor = function(stat) {
-        activeStatEdit = stat;
-        document.getElementById('stat-edit-title').innerText = `ADJUST ${stat.toUpperCase()}`;
-        document.getElementById('stat-edit-val').innerText = window.activeCharData[stat] || 0;
-        document.getElementById('modal-overlay').style.display = 'block';
-        document.getElementById('stat-editor').style.display = 'block';
-    };
-
-    window.closeStatEditor = function() {
-        document.getElementById('modal-overlay').style.display = 'none';
-        document.getElementById('stat-editor').style.display = 'none';
-        activeStatEdit = null;
-    };
-
-    window.adjEditingStat = function(amount) {
-        if (!activeStatEdit) return;
-        let current = parseInt(window.activeCharData[activeStatEdit] || 0);
-        current += amount;
-        if (current < 0) current = 0;
-        document.getElementById('stat-edit-val').innerText = current;
-        document.getElementById(`v-${activeStatEdit}`).innerText = current;
-        saveField(activeStatEdit, current);
-    };
-
-    // Tracks & Math Engine
-    window.markTracker = function(id, direction) {
-        const t = masterTrackers.find(x => x.id === id);
-        if (!t) return;
-
-        let amount = 1; 
-        if (t.type === 'vow' || t.type === 'track') {
-            if (t.rank === 'Troublesome') amount = 12;
-            else if (t.rank === 'Dangerous') amount = 8;
-            else if (t.rank === 'Formidable') amount = 4;
-            else if (t.rank === 'Extreme') amount = 2;
-            else if (t.rank === 'Epic') amount = 1;
-        }
-
-        if (direction === 'up') t.val += amount;
-        else if (direction === 'down') t.val -= amount;
-
-        if (t.val < 0) t.val = 0;
-        if (t.type === 'clock' && t.val > t.max) t.val = t.max;
-        if ((t.type === 'vow' || t.type === 'track') && t.val > 40) t.val = 40;
-
-        syncTrackers();
-    };
-
-    window.addNewTracker = function(type) {
-        masterTrackers.push({ id: Date.now(), type: type, name: `New ${type}`, val: 0, max: type === 'clock' ? 4 : 40, rank: 'Dangerous', dashboard: false });
-        syncTrackers();
-    };
-
-    window.deleteTracker = function(id) { masterTrackers = masterTrackers.filter(t => t.id !== id); syncTrackers(); };
-    window.updateTracker = function(id, field, value) {
-        const t = masterTrackers.find(t => t.id === id);
-        if(t) { t[field] = value; syncTrackers(); }
-    };
-    function syncTrackers() { saveField('trackers_json', JSON.stringify(masterTrackers)); renderTrackers(); }
-
-    function renderTrackers() {
-        const modalList = document.getElementById('modal-tracker-list');
-        const dashList = document.getElementById('dashboard-trackers');
-        modalList.innerHTML = ''; dashList.innerHTML = '';
-
-        masterTrackers.forEach(t => {
-            const typeColor = t.type === 'vow' ? '#8b5cf6' : t.type === 'track' ? '#3b82f6' : '#bcdee7';
-            
-            // Modal View String
-            let valControl = t.type === 'clock' ? 
-                `<div style="display:flex; align-items:center; gap:5px;">
-                    <button class="tiny-btn" onclick="markTracker(${t.id}, 'down')">-</button>
-                    <span style="font-family:'Share Tech Mono'; width:50px; text-align:center;">${t.val} /</span> 
-                    <select class="term-input" style="width: 50px; padding: 5px;" onchange="updateTracker(${t.id}, 'max', parseInt(this.value))">
-                        <option value="4" ${t.max === 4 ? 'selected' : ''}>4</option><option value="6" ${t.max === 6 ? 'selected' : ''}>6</option>
-                        <option value="8" ${t.max === 8 ? 'selected' : ''}>8</option><option value="10" ${t.max === 10 ? 'selected' : ''}>10</option>
-                    </select>
-                    <button class="tiny-btn" onclick="markTracker(${t.id}, 'up')">+</button>
-                 </div>` :
-                `<div style="display:flex; align-items:center; gap:5px;">
-                    <button class="tiny-btn" onclick="markTracker(${t.id}, 'down')">-</button>
-                    <span style="font-family:'Share Tech Mono'; width:60px; text-align:center; font-size:0.8rem;">${t.val} / 40</span>
-                    <button class="tiny-btn" onclick="markTracker(${t.id}, 'up')">+</button>
-                    <select class="term-input" style="width: 100px; padding: 5px; font-size: 0.65rem; margin-left: 10px;" onchange="updateTracker(${t.id}, 'rank', this.value)">
-                        <option value="Troublesome" ${t.rank === 'Troublesome'?'selected':''}>Troublesome</option><option value="Dangerous" ${t.rank === 'Dangerous'?'selected':''}>Dangerous</option>
-                        <option value="Formidable" ${t.rank === 'Formidable'?'selected':''}>Formidable</option><option value="Extreme" ${t.rank === 'Extreme'?'selected':''}>Extreme</option>
-                        <option value="Epic" ${t.rank === 'Epic'?'selected':''}>Epic</option>
-                    </select>
-                 </div>`;
-
-            modalList.innerHTML += `
-                <div style="background: #161922; padding: 10px; border: 1px solid #454d5d; border-radius: 4px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span style="font-size:0.65rem; color:${typeColor}; text-transform:uppercase; font-weight:bold;">${t.type}</span>
-                        <span style="font-size:0.6rem; color:#ff0055; cursor:pointer;" onclick="deleteTracker(${t.id})">[DELETE]</span>
-                    </div>
-                    <input type="text" class="term-input" style="margin:5px 0;" value="${t.name}" onchange="updateTracker(${t.id}, 'name', this.value)">
-                    <div style="display:flex; align-items:center; justify-content:space-between;">
-                        ${valControl}
-                        <label style="font-size: 0.65rem; color: #aab;"><input type="checkbox" ${t.dashboard ? 'checked' : ''} onchange="updateTracker(${t.id}, 'dashboard', this.checked)"> Pin</label>
-                    </div>
-                </div>`;
-
-            // Dashboard View
-            if (t.dashboard) {
-                let rankLabel = (t.type === 'track' || t.type === 'vow') ? `<div style="font-size:0.5rem; color:#aab; text-transform:uppercase; margin-top:2px;">${t.rank}</div>` : '';
-                dashList.innerHTML += `
-                    <div style="display: flex; gap: 8px; background: #161922; padding: 8px 10px; border: 1px solid #454d5d; border-radius: 4px; align-items: center;">
-                        <div style="width: 50px;"><div style="font-size: 0.6rem; color: ${typeColor}; font-weight:bold;">${t.type.toUpperCase()}</div>${rankLabel}</div>
-                        <input type="text" class="term-input" style="flex-grow: 1; border: none; background: transparent; padding:0; font-size:0.85rem;" value="${t.name}" onchange="updateTracker(${t.id}, 'name', this.value)">
-                        <div style="display:flex; align-items:center; gap: 5px;">
-                            <button class="tiny-btn" onclick="markTracker(${t.id}, 'down')">-</button>
-                            <span style="font-family:'Share Tech Mono'; font-size:0.8rem; width:50px; text-align:center;">${t.val}/${t.max}</span>
-                            <button class="tiny-btn" onclick="markTracker(${t.id}, 'up')">+</button>
-                        </div>
-                    </div>`;
-            }
+    (async function() {
+        // Hydrate from DB
+        const savedData = window.charData || {};
+        const statFields = ['edge', 'heart', 'iron', 'shadow', 'wits', 'health', 'spirit', 'supply'];
+        
+        statFields.forEach(stat => {
+            if (savedData[stat] !== undefined) document.getElementById(`stat-${stat}`).innerText = savedData[stat];
         });
-        if (dashList.innerHTML === '') dashList.innerHTML = '<div style="font-size: 0.7rem; color: #454d5d; font-style: italic;">No active trackers pinned.</div>';
-    }
 
-    // Drawer, Resources & Rolls below
-    function toggleDrawer() {
-        const drawer = document.getElementById('impact-drawer');
-        drawer.classList.toggle('open');
-        document.getElementById('drawer-icon').innerText = drawer.classList.contains('open') ? "[-] IMPACT DEBILITIES" : "[+] IMPACT DEBILITIES";
-    }
-    window.toggleImpact = function(id, is) { saveField('i_' + id, is); document.getElementById('tag-' + id).classList.toggle('active', is); recalcMomentum(); };
-    function recalcMomentum() {
-        let cnt = 0; ['wounded', 'shaken', 'unprepared', 'battered', 'cursed'].forEach(i => { if(document.getElementById('i-'+i).checked) cnt++; });
-        document.getElementById('impact-counter').innerText = `${cnt} ACTIVE`; document.getElementById('impact-counter').style.color = cnt > 0 ? "#ff0055" : "#fff";
-        const max = 10 - cnt; document.getElementById('btn-mom-reset').innerText = `R ${cnt === 1 ? 1 : cnt >= 2 ? 0 : 2}/${max}`;
-    }
-    window.burnMomentum = () => { const reset = parseInt(document.getElementById('btn-mom-reset').innerText.split(' ')[1].split('/')[0]); document.getElementById('v-momentum').value = reset; saveField('momentum', reset); };
-    window.resetMomentum = () => burnMomentum();
-    function renderResource(n, min, max, cur, cid, warns = []) {
-        const wrapper = document.createElement('div'); wrapper.className = 'track-wrapper';
-        wrapper.innerHTML = `<span class="track-label">${n.toUpperCase()} ${warns.map(w => `<span id="tag-${w.id}" class="warn-tag">[${w.label}]</span>`).join('')}</span><div class="track-dots" id="dots-${n}"></div>`;
-        document.getElementById(cid).appendChild(wrapper);
-        for (let i = min; i <= max; i++) {
-            const dot = document.createElement('div'); dot.className = `dot ${i <= cur ? 'active' : ''}`;
-            dot.onclick = () => { wrapper.querySelectorAll('.dot').forEach((d, idx) => { d.classList.toggle('active', min + idx <= i); }); saveField(n, i); };
-            wrapper.querySelector('.track-dots').appendChild(dot);
-        }
-    }
-    window.openTrackerModal = () => document.getElementById('tracker-panel').classList.add('open');
-    window.closeTrackerModal = () => document.getElementById('tracker-panel').classList.remove('open');
+        // UI Interactions
+        let pressTimer;
+        let isLongPress = false;
 
-    async function tempNeuralRoll(val) {
-        const d1 = Math.floor(Math.random()*10)+1, d2 = Math.floor(Math.random()*10)+1, ad = Math.floor(Math.random()*6)+1;
-        let s = Math.min(ad + val, 10), hits = (s>d1?1:0) + (s>d2?1:0);
-        return { result: hits === 2 ? "STRONG HIT" : hits === 1 ? "WEAK HIT" : "MISS", ad, s, d1, d2 };
-    }
-    window.triggerMoveRoll = async function(statName) {
-        if(activeStatEdit) return; // Prevent roll if editing
-        const val = parseInt(window.activeCharData[statName.toLowerCase()] || 0);
-        document.getElementById('roll-overlay').style.display = 'block'; document.getElementById('roll-res').innerText = "CALCULATING...";
-        try { const r = await tempNeuralRoll(val); document.getElementById('roll-res').innerText = r.result; document.getElementById('roll-res').style.color = r.result.includes("MISS") ? "#ff0055" : "#00ff9d"; document.getElementById('roll-details').innerText = `${statName} (+${val}) vs Challenge(${r.d1}, ${r.d2})`; } catch (e) {}
-    };
-    window.executeActionRoll = async function() {
-        const mod = parseInt(document.getElementById('dice-modifier').value) || 0;
-        document.getElementById('roll-overlay').style.display = 'block'; document.getElementById('roll-res').innerText = "CALCULATING...";
-        try { const r = await tempNeuralRoll(mod); document.getElementById('roll-res').innerText = r.result; document.getElementById('roll-res').style.color = r.result.includes("MISS") ? "#ff0055" : "#3b82f6"; document.getElementById('roll-details').innerText = `Action: ${r.s} vs Challenge(${r.d1}, ${r.d2})`; } catch(e) {}
-    };
-    window.executeD100Roll = async function() {
-        document.getElementById('roll-overlay').style.display = 'block'; document.getElementById('roll-res').innerText = `ROLLED: ${Math.floor(Math.random()*100)+1}`; document.getElementById('roll-res').style.color = "#3b82f6"; document.getElementById('roll-details').innerText = `Percentile d100 Roll`;
-    };
-    setTimeout(initSheet, 100);
+        window.startPress = function(field, delta) {
+            isLongPress = false;
+            pressTimer = setTimeout(() => {
+                isLongPress = true;
+                updateStatValue(field, delta);
+            }, 500); // 500ms hold to increment
+        };
+
+        window.endPress = function(statName) {
+            clearTimeout(pressTimer);
+            if (!isLongPress && statName) {
+                rollStat(statName); // It was a click, so roll
+            }
+        };
+
+        window.cancelPress = function() {
+            clearTimeout(pressTimer);
+        };
+
+        window.updateStatValue = async function(field, delta, e) {
+            if(e) e.preventDefault(); // Prevent context menu on right click
+            const el = document.getElementById(`stat-${field}`);
+            let val = parseInt(el.innerText) + delta;
+            
+            // Bounds checking
+            if(field === 'health' || field === 'spirit' || field === 'supply') {
+                if(val > 5) val = 5; if(val < 0) val = 0;
+            } else {
+                if(val > 4) val = 4; if(val < 1) val = 1;
+            }
+            
+            el.innerText = val;
+            if (window.gLink) await window.gLink.saveStatServer(window.charId, field, val);
+        };
+
+        window.updateStat = async function(field, val) {
+            if (window.gLink) await window.gLink.saveStatServer(window.charId, field, val);
+        };
+
+        // --- MOMENTUM STATE MANAGER ---
+        window.momState = {
+            current: savedData.momentum !== undefined ? parseInt(savedData.momentum) : 2,
+            impacts: savedData.impacts !== undefined ? parseInt(savedData.impacts) : 0,
+            resetOver: (savedData.mom_reset_ovr !== "" && savedData.mom_reset_ovr !== undefined) ? parseInt(savedData.mom_reset_ovr) : null,
+            maxOver: (savedData.mom_max_ovr !== "" && savedData.mom_max_ovr !== undefined) ? parseInt(savedData.mom_max_ovr) : null
+        };
+
+        window.getMomMax = () => {
+            if (window.momState.maxOver !== null) return window.momState.maxOver;
+            return Math.max(10 - window.momState.impacts, 0);
+        };
+
+        window.getMomReset = () => {
+            if (window.momState.resetOver !== null) return window.momState.resetOver;
+            if (window.momState.impacts === 0) return 2;
+            if (window.momState.impacts === 1) return 1;
+            return 0; 
+        };
+
+        window.renderMomentum = () => {
+            document.getElementById('mom-current').innerText = window.momState.current;
+            document.getElementById('mom-impacts').value = window.momState.impacts;
+            
+            const resetInput = document.getElementById('mom-reset-ovr');
+            resetInput.value = window.momState.resetOver !== null ? window.momState.resetOver : '';
+            resetInput.placeholder = `Auto (${window.getMomReset()})`;
+
+            const maxInput = document.getElementById('mom-max-ovr');
+            maxInput.value = window.momState.maxOver !== null ? window.momState.maxOver : '';
+            maxInput.placeholder = `Auto (${window.getMomMax()})`;
+        };
+
+        window.changeMomentum = async (delta) => {
+            let newVal = window.momState.current + delta;
+            let max = window.getMomMax();
+            
+            if (newVal > max) newVal = max; 
+            if (newVal < -6) {
+                newVal = -6; 
+                alert("CRITICAL WARNING: Momentum at -6. You must apply this cost to Health, Spirit, or Supply instead.");
+            }
+            
+            window.momState.current = newVal;
+            window.renderMomentum();
+            await window.updateStat('momentum', newVal);
+        };
+
+        window.executeBurnMomentum = async () => {
+            if (window.momState.current <= 0) {
+                alert("DENIED: You must have positive momentum to burn it.");
+                return;
+            }
+            
+            let burnedValue = window.momState.current;
+            let resetValue = window.getMomReset();
+            
+            window.momState.current = resetValue;
+            window.renderMomentum();
+            await window.updateStat('momentum', resetValue);
+            
+            if (window.gLink && typeof window.gLink.logServer === 'function') {
+                await window.gLink.logServer(window.charId, `[BURNED MOMENTUM] Replaced action score with +${burnedValue}. Resetting meter to +${resetValue}.`);
+            }
+            alert(`Momentum Burned! Action score acts as +${burnedValue}. Momentum reset to +${resetValue}.`);
+        };
+
+        window.updateMomImpacts = async (val) => {
+            let impacts = parseInt(val) || 0;
+            window.momState.impacts = impacts;
+            
+            let max = window.getMomMax();
+            if (window.momState.current > max) {
+                window.momState.current = max;
+                await window.updateStat('momentum', max);
+            }
+            
+            window.renderMomentum();
+            await window.updateStat('impacts', impacts);
+        };
+
+        window.updateMomOverride = async (type, val) => {
+            let parsed = val === '' ? null : parseInt(val);
+            
+            if (type === 'reset') {
+                window.momState.resetOver = parsed;
+                await window.updateStat('mom_reset_ovr', parsed !== null ? parsed : "");
+            } else {
+                window.momState.maxOver = parsed;
+                let max = window.getMomMax();
+                if (window.momState.current > max) {
+                    window.momState.current = max;
+                    await window.updateStat('momentum', max);
+                }
+                await window.updateStat('mom_max_ovr', parsed !== null ? parsed : "");
+            }
+            window.renderMomentum();
+        };
+
+        // --- DICE LOGIC ---
+        window.tempNeuralRoll = async function(statValue) {
+            let actionDie = Math.floor(Math.random() * 6) + 1;
+            let d1 = Math.floor(Math.random() * 10) + 1;
+            let d2 = Math.floor(Math.random() * 10) + 1;
+
+            if (window.momState.current < 0 && actionDie === Math.abs(window.momState.current)) {
+                actionDie = 0; 
+                if (window.gLink && typeof window.gLink.logServer === 'function') {
+                    window.gLink.logServer(window.charId, `[SYSTEM ALERT] Negative Momentum triggered. Action die canceled.`);
+                }
+            }
+
+            let score = actionDie + statValue;
+            let result = "MISS";
+            
+            if (score > d1 && score > d2) result = "STRONG HIT";
+            else if (score > d1 || score > d2) result = "WEAK HIT";
+            
+            if (d1 === d2) result = "MATCH: " + result;
+
+            return { s: score, d1: d1, d2: d2, result: result, actionDie: actionDie };
+        };
+
+        window.rollStat = async function(statName) {
+            const val = parseInt(document.getElementById(`stat-${statName.toLowerCase()}`).innerText || 0);
+            const resText = document.getElementById('roll-res');
+            const detailsText = document.getElementById('roll-details');
+            
+            document.getElementById('roll-overlay').style.display = 'block'; 
+            resText.innerText = "CALCULATING...";
+            
+            try { 
+                const r = await tempNeuralRoll(val); 
+                resText.innerText = r.result; 
+                resText.style.color = r.result.includes("MISS") ? "#ff0055" : (r.result.includes("STRONG") ? "#00ff9d" : "#3b82f6"); 
+                
+                let details = `${statName} (+${val}) vs Challenge(${r.d1}, ${r.d2})`;
+                if (r.actionDie === 0) details += " [DIE CANCELED BY NEG MOMENTUM]";
+                detailsText.innerText = details;
+
+                if (window.gLink && typeof window.gLink.logServer === 'function') {
+                    await window.gLink.logServer(window.charId, `[ROLL] ${statName}: +${val} | Result: ${r.result} | (${r.actionDie}+${val}=${r.s}) vs [${r.d1}, ${r.d2}]`);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        };
+
+        window.executeActionRoll = async function() {
+            const mod = parseInt(document.getElementById('dice-modifier').value) || 0;
+            const resText = document.getElementById('roll-res');
+            const detailsText = document.getElementById('roll-details');
+            
+            document.getElementById('roll-overlay').style.display = 'block'; 
+            resText.innerText = "CALCULATING...";
+            
+            try { 
+                const r = await tempNeuralRoll(mod); 
+                resText.innerText = r.result; 
+                resText.style.color = r.result.includes("MISS") ? "#ff0055" : (r.result.includes("STRONG") ? "#00ff9d" : "#3b82f6"); 
+                
+                let details = `Action: ${r.s} vs Challenge(${r.d1}, ${r.d2})`;
+                if (r.actionDie === 0) details += " [DIE CANCELED BY NEG MOMENTUM]";
+                detailsText.innerText = details;
+
+                if (window.gLink && typeof window.gLink.logServer === 'function') {
+                    await window.gLink.logServer(window.charId, `[ROLL] Action: +${mod} | Result: ${r.result} | (${r.actionDie}+${mod}=${r.s}) vs [${r.d1}, ${r.d2}]`);
+                }
+            } catch(e) {
+                console.error(e);
+            }
+        };
+
+        window.executeD100Roll = async function() {
+            document.getElementById('roll-overlay').style.display = 'block'; 
+            const roll = Math.floor(Math.random()*100)+1;
+            
+            const resText = document.getElementById('roll-res');
+            resText.innerText = `ROLLED: ${roll}`; 
+            resText.style.color = "#bcdee7";
+            document.getElementById('roll-details').innerText = "D100 Oracle";
+            
+            if (window.gLink && typeof window.gLink.logServer === 'function') {
+                await window.gLink.logServer(window.charId, `[ORACLE ROLL] D100: ${roll}`);
+            }
+        };
+
+        // Render initial momentum UI state
+        window.renderMomentum();
+    })();
 </script>
