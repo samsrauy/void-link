@@ -15,27 +15,28 @@
     .stat-label { font-size: 0.6rem; text-transform: uppercase; opacity: 0.6; }
 
     /* Resource Tracks */
-    .track-row { display: flex; align-items: center; justify-content: space-between; background: #161922; padding: 8px 15px; margin-bottom: 5px; border-radius: 4px; border-left: 2px solid transparent; }
-    .track-row:hover { border-left-color: #00ff9d; }
-    .track-label { font-size: 0.8rem; font-weight: bold; width: 100px; }
+    .track-wrapper { background: #161922; padding: 10px 15px; margin-bottom: 5px; border-radius: 4px; border: 1px solid #454d5d; display: flex; align-items: center; justify-content: space-between;}
+    .track-label { font-size: 0.8rem; font-weight: bold; width: 180px; display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
     .track-dots { display: flex; gap: 4px; flex-wrap: wrap; }
     .dot { width: 14px; height: 14px; border: 1px solid #454d5d; cursor: pointer; transition: 0.2s; }
     .dot:hover { border-color: #00ff9d; }
     .dot.active { background: #00ff9d; box-shadow: 0 0 8px rgba(0, 255, 153, 0.5); border-color: #00ff9d; }
     
-    /* Impacts / Checkboxes */
-    .impact-label { color: #ff0055; font-size: 0.8rem; display: flex; align-items: center; gap: 8px; cursor: pointer; font-family: 'Share Tech Mono'; }
-    .impact-label input { cursor: pointer; accent-color: #ff0055; width: 16px; height: 16px; }
+    /* Warning Tags */
+    .warn-tag { display: none; background: #ff005522; color: #ff0055; border: 1px solid #ff0055; font-size: 0.55rem; padding: 2px 4px; border-radius: 2px; font-family: 'Share Tech Mono'; letter-spacing: 1px; }
+    .warn-tag.active { display: inline-block; }
+
+    /* Impacts Drawer */
+    .drawer-btn { background: #1a1c23; border: 1px dashed #454d5d; color: #ff0055; padding: 10px 15px; width: 100%; text-align: left; cursor: pointer; font-family: 'Share Tech Mono'; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; border-radius: 4px; margin-bottom: 5px; }
+    .drawer-btn:hover { background: #ff005511; border-color: #ff0055; }
+    .drawer-content { display: none; background: #0b0d12; border: 1px dashed #454d5d; border-top: none; padding: 15px; flex-wrap: wrap; gap: 20px; margin-bottom: 15px; border-radius: 0 0 4px 4px; }
+    .drawer-content.open { display: flex; }
+    .impact-label { color: #aab; font-size: 0.75rem; display: flex; align-items: center; gap: 6px; cursor: pointer; font-family: 'Share Tech Mono'; transition: 0.2s;}
+    .impact-label:hover { color: #fff; }
+    .impact-label input { cursor: pointer; accent-color: #ff0055; width: 14px; height: 14px; margin: 0; }
 
     /* Roll Overlay */
-    #roll-overlay { 
-        background: #000; 
-        border: 1px solid #00ff9d; 
-        padding: 15px; 
-        margin-top: 20px; 
-        display: none; 
-        box-shadow: inset 0 0 15px rgba(0, 255, 153, 0.1);
-    }
+    #roll-overlay { background: #000; border: 1px solid #00ff9d; padding: 15px; margin-top: 20px; display: none; box-shadow: inset 0 0 15px rgba(0, 255, 153, 0.1); }
     .roll-close { float: right; cursor: pointer; color: #454d5d; font-size: 0.8rem; }
 </style>
 
@@ -71,18 +72,36 @@
         </div>
     </div>
 
-    <div class="section-title">CONDITION TRACKS</div>
-    <div id="tracks-container"></div>
-    <div id="momentum-container" style="margin-top: 10px;"></div>
-
-    <div class="section-title">IMPACTS</div>
-    <div style="display: flex; gap: 20px; flex-wrap: wrap; background: #161922; padding: 15px; border: 1px solid #454d5d; border-radius: 4px; margin-bottom: 20px;">
-        <label class="impact-label"><input type="checkbox" id="i-wounded" onchange="saveField('i_wounded', this.checked)"> WOUNDED</label>
-        <label class="impact-label"><input type="checkbox" id="i-shaken" onchange="saveField('i_shaken', this.checked)"> SHAKEN</label>
-        <label class="impact-label"><input type="checkbox" id="i-unprepared" onchange="saveField('i_unprepared', this.checked)"> UNPREPARED</label>
-        <label class="impact-label"><input type="checkbox" id="i-battered" onchange="saveField('i_battered', this.checked)"> BATTERED</label>
-        <label class="impact-label"><input type="checkbox" id="i-cursed" onchange="saveField('i_cursed', this.checked)"> CURSED</label>
+    <div class="section-title">CONDITIONS & MOMENTUM</div>
+    
+    <div style="display: flex; align-items: center; justify-content: space-between; background: #1a1c23; padding: 10px 15px; border: 1px solid #454d5d; border-left: 4px solid #bcdee7; border-radius: 4px; margin-bottom: 15px;">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <span style="font-size: 0.8rem; font-weight: bold; color: #bcdee7; letter-spacing: 1px;">MOMENTUM</span>
+            <input type="number" id="v-momentum" class="term-input" style="width: 60px; height: 35px; text-align: center; padding: 5px; font-size: 1.2rem;" onchange="saveField('momentum', this.value)">
+        </div>
+        <div style="display: flex; gap: 15px; font-size: 0.65rem; color: #aab; text-align: center;">
+            <div>MAX<br><span id="mom-max" style="font-size: 1rem; color: #fff; font-weight: bold;">10</span></div>
+            <div>RESET<br><span id="mom-reset" style="font-size: 1rem; color: #fff; font-weight: bold;">2</span></div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="burnMomentum()" style="height: 35px; background: #ff0055; color: #fff; border: none; padding: 0 15px; font-family: 'Share Tech Mono'; font-weight: bold; cursor: pointer; border-radius: 3px; transition: 0.2s;">BURN</button>
+            <button onclick="resetMomentum()" style="height: 35px; background: #3b82f6; color: #000; border: none; padding: 0 15px; font-family: 'Share Tech Mono'; font-weight: bold; cursor: pointer; border-radius: 3px; transition: 0.2s;">RESET</button>
+        </div>
     </div>
+
+    <button class="drawer-btn" onclick="toggleDrawer()">
+        <span id="drawer-icon">[+] IMPACT SYSTEM DEBILITIES</span>
+        <span id="impact-counter" style="color: #fff; font-size: 0.7rem;">0 ACTIVE</span>
+    </button>
+    <div id="impact-drawer" class="drawer-content">
+        <label class="impact-label"><input type="checkbox" id="i-wounded" onchange="toggleImpact('wounded', this.checked)"> WOUNDED (Health)</label>
+        <label class="impact-label"><input type="checkbox" id="i-battered" onchange="toggleImpact('battered', this.checked)"> BATTERED (Health)</label>
+        <label class="impact-label"><input type="checkbox" id="i-shaken" onchange="toggleImpact('shaken', this.checked)"> SHAKEN (Spirit)</label>
+        <label class="impact-label"><input type="checkbox" id="i-cursed" onchange="toggleImpact('cursed', this.checked)"> CURSED (Spirit)</label>
+        <label class="impact-label"><input type="checkbox" id="i-unprepared" onchange="toggleImpact('unprepared', this.checked)"> UNPREPARED (Supply)</label>
+    </div>
+
+    <div id="tracks-container"></div>
 
     <div class="section-title">LEGACY & EXPERIENCE</div>
     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
@@ -119,37 +138,25 @@
 </div>
 
 <script>
-    /**
-     * MODULE INITIALIZATION
-     */
     async function initSheet() {
         console.log("Sheet Module: Initializing for ID:", window.charId);
         try {
             if (window.dataswornReady) await window.dataswornReady;
             
-            // Connect to gLink API
             const data = await window.gLink.loadStatsServer(window.charId);
             const sheetData = data || {};
+            window.activeCharData = sheetData;
             
-            // 1. Core Header & Stats
             document.getElementById('char-sheet-display').innerText = (sheetData.name || window.charId).toUpperCase();
             ['edge','heart','iron','shadow','wits'].forEach(s => {
                 const el = document.getElementById(`v-${s}`);
                 if (el) el.innerText = sheetData[s] || 0;
             });
 
-            // 2. Identity Text Fields
             ['name', 'pronouns', 'background', 'look'].forEach(f => {
                 if(document.getElementById('f-'+f)) document.getElementById('f-'+f).value = sheetData[f] || "";
             });
 
-            // 3. Impact Checkboxes (Stored as 'true'/'false' strings usually)
-            ['wounded', 'shaken', 'unprepared', 'battered', 'cursed'].forEach(i => {
-                const el = document.getElementById('i-'+i);
-                if(el) el.checked = (sheetData['i_'+i] === 'true' || sheetData['i_'+i] === true);
-            });
-
-            // 4. Legacy Tracks & XP
             ['quests', 'bonds', 'discoveries'].forEach(l => {
                 if(document.getElementById('l-'+l)) document.getElementById('l-'+l).value = sheetData['l_'+l] || 0;
             });
@@ -157,16 +164,31 @@
                 if(document.getElementById('x-'+x)) document.getElementById('x-'+x).value = sheetData['x_'+x] || 0;
             });
 
-            // 5. Condition Tracks
-            document.getElementById('tracks-container').innerHTML = '';
-            document.getElementById('momentum-container').innerHTML = '';
-            
-            renderResource('health', 0, 5, parseInt(sheetData.health ?? 5), 'tracks-container');
-            renderResource('spirit', 0, 5, parseInt(sheetData.spirit ?? 5), 'tracks-container');
-            renderResource('supply', 0, 5, parseInt(sheetData.supply ?? 5), 'tracks-container');
-            renderResource('momentum', -6, 10, parseInt(sheetData.momentum ?? 2), 'momentum-container');
+            document.getElementById('v-momentum').value = parseInt(sheetData.momentum ?? 2);
 
-            window.activeCharData = sheetData;
+            // Render Tracks with specific Warning Tags assigned to them
+            document.getElementById('tracks-container').innerHTML = '';
+            renderResource('health', 0, 5, parseInt(sheetData.health ?? 5), 'tracks-container', [
+                {id: 'wounded', label: 'WOUNDED'}, {id: 'battered', label: 'BATTERED'}
+            ]);
+            renderResource('spirit', 0, 5, parseInt(sheetData.spirit ?? 5), 'tracks-container', [
+                {id: 'shaken', label: 'SHAKEN'}, {id: 'cursed', label: 'CURSED'}
+            ]);
+            renderResource('supply', 0, 5, parseInt(sheetData.supply ?? 5), 'tracks-container', [
+                {id: 'unprepared', label: 'UNPREPARED'}
+            ]);
+
+            // Sync Checkboxes and Tags
+            ['wounded', 'battered', 'shaken', 'cursed', 'unprepared'].forEach(i => {
+                const isChecked = (sheetData['i_'+i] === 'true' || sheetData['i_'+i] === true);
+                const el = document.getElementById('i-'+i);
+                if(el) el.checked = isChecked;
+                
+                const tagEl = document.getElementById('tag-'+i);
+                if(tagEl && isChecked) tagEl.classList.add('active');
+            });
+
+            recalcMomentum();
 
         } catch (err) {
             console.error("Sheet Init Failure:", err);
@@ -174,27 +196,98 @@
         }
     }
 
-    // Generic save function for all the new inputs and checkboxes
+    function toggleDrawer() {
+        const drawer = document.getElementById('impact-drawer');
+        const icon = document.getElementById('drawer-icon');
+        drawer.classList.toggle('open');
+        icon.innerText = drawer.classList.contains('open') ? "[-] IMPACT SYSTEM DEBILITIES" : "[+] IMPACT SYSTEM DEBILITIES";
+    }
+
     function saveField(key, value) {
         if (!window.activeCharData) window.activeCharData = {};
         window.activeCharData[key] = value;
-        if (window.gLink) {
-            window.gLink.saveStatServer(window.charId, key, value);
+        if (window.gLink) window.gLink.saveStatServer(window.charId, key, value);
+    }
+
+    window.toggleImpact = function(id, isChecked) {
+        saveField('i_' + id, isChecked);
+        
+        // Toggle the warning tag on the track UI
+        const tagEl = document.getElementById('tag-' + id);
+        if (tagEl) {
+            if (isChecked) tagEl.classList.add('active');
+            else tagEl.classList.remove('active');
+        }
+        
+        recalcMomentum();
+    };
+
+    function recalcMomentum() {
+        let impactCount = 0;
+        ['wounded', 'shaken', 'unprepared', 'battered', 'cursed'].forEach(i => {
+            const el = document.getElementById('i-'+i);
+            if(el && el.checked) impactCount++;
+        });
+        
+        document.getElementById('impact-counter').innerText = `${impactCount} ACTIVE`;
+        if (impactCount > 0) document.getElementById('impact-counter').style.color = "#ff0055";
+        else document.getElementById('impact-counter').style.color = "#fff";
+
+        const maxMom = 10 - impactCount;
+        let resetMom = 2;
+        if (impactCount === 1) resetMom = 1;
+        if (impactCount >= 2) resetMom = 0;
+        
+        document.getElementById('mom-max').innerText = maxMom;
+        document.getElementById('mom-reset').innerText = resetMom;
+        
+        const currentMomEl = document.getElementById('v-momentum');
+        let currentMom = parseInt(currentMomEl.value) || 0;
+        if (currentMom > maxMom) {
+            currentMomEl.value = maxMom;
+            saveField('momentum', maxMom);
         }
     }
 
-    function renderResource(name, min, max, current, containerId) {
-        const container = document.getElementById(containerId);
-        const row = document.createElement('div');
-        row.className = 'track-row';
-        row.innerHTML = `<span class="track-label">${name.toUpperCase()}</span><div class="track-dots" id="dots-${name}"></div>`;
-        container.appendChild(row);
+    window.burnMomentum = async function() {
+        const current = document.getElementById('v-momentum').value;
+        const resetVal = parseInt(document.getElementById('mom-reset').innerText);
+        document.getElementById('v-momentum').value = resetVal;
+        saveField('momentum', resetVal);
+        
+        const logMsg = `[MOMENTUM BURNED]\nBurned from ${current} down to ${resetVal}.`;
+        if (window.gLink && typeof window.gLink.logServer === 'function') {
+            await window.gLink.logServer(window.charId, logMsg);
+        }
+    };
 
-        const dotBox = row.querySelector('.track-dots');
+    window.resetMomentum = function() {
+        const resetVal = parseInt(document.getElementById('mom-reset').innerText);
+        document.getElementById('v-momentum').value = resetVal;
+        saveField('momentum', resetVal);
+    };
+
+    function renderResource(name, min, max, current, containerId, warnings = []) {
+        const container = document.getElementById(containerId);
+        const wrapper = document.createElement('div');
+        wrapper.className = 'track-wrapper';
+
+        let warningHTML = '';
+        warnings.forEach(w => {
+            warningHTML += `<span id="tag-${w.id}" class="warn-tag">[${w.label}]</span>`;
+        });
+
+        wrapper.innerHTML = `
+            <span class="track-label">${name.toUpperCase()} ${warningHTML}</span>
+            <div class="track-dots" id="dots-${name}"></div>
+        `;
+        container.appendChild(wrapper);
+
+        const dotBox = wrapper.querySelector('.track-dots');
         for (let i = min; i <= max; i++) {
             const dot = document.createElement('div');
             dot.className = `dot ${i <= current ? 'active' : ''}`;
-            dot.onclick = async () => {
+            dot.onclick = () => {
                 updateDotsUI(name, i, min, max);
                 window.activeCharData[name] = i;
                 saveField(name, i);
@@ -211,7 +304,6 @@
         });
     }
 
-    // Engine for generating Starforged/Ironsworn Rolls
     async function tempNeuralRoll(val) {
         const d1 = Math.floor(Math.random() * 10) + 1;
         const d2 = Math.floor(Math.random() * 10) + 1;
@@ -236,7 +328,6 @@
         return { result, actionDie, actionScore, d1, d2 };
     }
 
-    // Fired when clicking the specific stat buttons (Edge, Heart, etc.)
     async function triggerMoveRoll(statName) {
         const val = parseInt(window.activeCharData[statName.toLowerCase()] || 0);
         const overlay = document.getElementById('roll-overlay');
@@ -250,16 +341,12 @@
             document.getElementById('roll-details').innerText = `${statName} (+${val}) vs Challenge(${roll.d1}, ${roll.d2})`;
 
             const logMsg = `[STAT ROLL: ${statName.toUpperCase()}]\nAction Die: ${roll.actionDie} + ${val} = ${roll.actionScore}\nChallenge Dice: [${roll.d1}] and [${roll.d2}]\nResult: **${roll.result}**`;
-            if (window.gLink && typeof window.gLink.logServer === 'function') {
-                await window.gLink.logServer(window.charId, logMsg);
-            }
+            if (window.gLink && typeof window.gLink.logServer === 'function') await window.gLink.logServer(window.charId, logMsg);
         } catch (e) {
             document.getElementById('roll-res').innerText = "ROLL ERROR";
-            console.error(e);
         }
     }
 
-    // Fired by the Custom Action Roller
     window.executeActionRoll = async function() {
         const mod = parseInt(document.getElementById('dice-modifier').value) || 0;
         const overlay = document.getElementById('roll-overlay');
@@ -272,30 +359,23 @@
             document.getElementById('roll-res').style.color = roll.result.includes("MISS") ? "#ff0055" : "#3b82f6";
             document.getElementById('roll-details').innerText = `Action: ${roll.actionScore} vs Challenge(${roll.d1}, ${roll.d2})`;
 
-            const logMsg = `[CUSTOM ACTION ROLL]\nAction Die: ${roll.actionDie} + ${mod} = ${roll.actionScore}\nChallenge Dice: [${roll.d1}] and [${roll.d2}]\nResult: **${roll.result}**`;
-            if (window.gLink && typeof window.gLink.logServer === 'function') {
-                await window.gLink.logServer(window.charId, logMsg);
-            }
+            const logMsg = `[ACTION ROLL]\nAction Die: ${roll.actionDie} + ${mod} = ${roll.actionScore}\nChallenge Dice: [${roll.d1}] and [${roll.d2}]\nResult: **${roll.result}**`;
+            if (window.gLink && typeof window.gLink.logServer === 'function') await window.gLink.logServer(window.charId, logMsg);
         } catch(e) {
             document.getElementById('roll-res').innerText = "ROLL ERROR";
-            console.error(e);
         }
     };
 
-    // Fired by the d100 button
     window.executeD100Roll = async function() {
         const roll = Math.floor(Math.random() * 100) + 1;
-        const logMsg = `[PERCENTILE ROLL]\nResult: **${roll}**`;
-        
         const overlay = document.getElementById('roll-overlay');
         overlay.style.display = 'block';
         document.getElementById('roll-res').innerText = `ROLLED: ${roll}`;
         document.getElementById('roll-res').style.color = "#3b82f6";
         document.getElementById('roll-details').innerText = `Percentile d100 Roll`;
 
-        if (window.gLink && typeof window.gLink.logServer === 'function') {
-            await window.gLink.logServer(window.charId, logMsg);
-        }
+        const logMsg = `[PERCENTILE ROLL]\nResult: **${roll}**`;
+        if (window.gLink && typeof window.gLink.logServer === 'function') await window.gLink.logServer(window.charId, logMsg);
     };
 
     setTimeout(initSheet, 100);
