@@ -8,7 +8,7 @@
 
 This repository contains a **self‑contained web application** that serves as the front‑end for a tabletop RPG (compatible with Ironsworn/Starforged/Sworn systems). Its primary goals are:  
 
-* **Consume official Datasworn data** – The game’s content (characters, items, locations, etc.) is sourced directly from the open‑source *Datasworn* project via a CDN‑hosted JSON file.  
+* **Uses official Datasworn data** – The game’s content (characters, items, locations, etc.) is sourced directly from the open‑source *Datasworn* project via a CDN‑hosted JSON file.  
 * **Persist player state** – All character statistics, sector archives, and logs are stored in Google Sheets using a lightweight Apps Script backend.  
 * **Enable multiplayer & session logging** – The system supports real‑time interaction between players and maintains immutable logs for auditability.  
 
